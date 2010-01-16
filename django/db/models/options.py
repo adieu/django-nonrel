@@ -488,3 +488,10 @@ class Options(object):
         Returns the index of the primary key field in the self.fields list.
         """
         return self.fields.index(self.pk)
+
+    def check_supported(self, connection):
+        if not connection.features.supports_multi_table_inheritance and \
+                self.has_concrete_parent:
+            raise ValueError("The model %s uses multi-table inheritance which "
+                             "isn't supported by the selected backend (%s)"
+                             % (self, connection.alias))

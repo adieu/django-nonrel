@@ -333,3 +333,23 @@ def commit_manually(func_or_using=None):
     if callable(func_or_using):
         return inner_commit_manually(func_or_using, DEFAULT_DB_ALIAS)
     return lambda func: inner_commit_manually(func, func_or_using)
+
+def commit_locked(func_or_using=None):
+    """
+    Decorator that locks rows on DB reads.
+    """
+    # TODO GAE: Move this into backends.
+    # TODO GAE: Add support for post_save_committed and post_delete_committed
+    # signals which are sent after successful commit.
+    # TODO GAE: Check if we're already in a transaction and if so, call
+    # function directly?
+    def inner_commit_locked(func, using=None):
+        def _commit_locked(*args, **kw):
+            from google.appengine.api.datastore import RunInTransaction
+            return RunInTransaction(func, *args, **kw)
+        return commit_on_success(wraps(func)(_commit_locked))
+    if func_or_using is None:
+        func_or_using = DEFAULT_DB_ALIAS
+    if callable(func_or_using):
+        return inner_commit_locked(func_or_using, DEFAULT_DB_ALIAS)
+    return lambda func: inner_commit_locked(func, func_or_using)

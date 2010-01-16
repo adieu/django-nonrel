@@ -1,0 +1,9 @@
+syntax: glob
+*~
+*.pyc
+*.pyo
+*.tmp
+*.swp
+*.orig
+desktop.ini
+nbproject

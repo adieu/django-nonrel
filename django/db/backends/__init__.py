@@ -95,6 +95,9 @@ class BaseDatabaseFeatures(object):
     # If True, don't use integer foreign keys referring to, e.g., positive
     # integer primary keys.
     related_fields_match_type = False
+    distinguishes_insert_from_update = True
+    supports_deleting_related_objects = True
+    supports_multi_table_inheritance = True
 
 class BaseDatabaseOperations(object):
     """
