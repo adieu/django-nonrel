@@ -37,7 +37,7 @@ __test__ = {'API_TESTS': """
 >>> a.sites.count()
 1
 
-# Regression for #12248 - Models can exist in the test package, too
+# Regression for #12245 - Models can exist in the test package, too
 
 >>> ad = Advertisment(customer="Lawrence Journal-World")
 >>> ad.save()
@@ -66,8 +66,10 @@ __test__ = {'API_TESTS': """
 >>> Article.publications.through._meta.fields[2].get_attname_column()
 ('publication_id', 'publication_id')
 
->>> Article._meta.get_field('publications').m2m_db_table()
-'model_package_article_publications'
+# The oracle backend truncates the name to 'model_package_article_publ233f'.
+>>> Article._meta.get_field('publications').m2m_db_table() \\
+... in ('model_package_article_publications', 'model_package_article_publ233f')
+True
 
 >>> Article._meta.get_field('publications').m2m_column_name()
 'article_id'
