@@ -2,7 +2,7 @@ from django.db import connections
 from django.db.models.query import QuerySet, Q, ValuesQuerySet, ValuesListQuerySet
 
 from django.contrib.gis.db.models import aggregates
-from django.contrib.gis.db.models.fields import get_srid_info, GeometryField, PointField
+from django.contrib.gis.db.models.fields import get_srid_info, GeometryField, PointField, LineStringField
 from django.contrib.gis.db.models.sql import AreaField, DistanceField, GeomField, GeoQuery, GeoWhereNode
 from django.contrib.gis.geometry.backend import Geometry
 from django.contrib.gis.measure import Area, Distance
@@ -12,7 +12,7 @@ class GeoQuerySet(QuerySet):
 
     ### Methods overloaded from QuerySet ###
     def __init__(self, model=None, query=None, using=None):
-        super(GeoQuerySet, self).__init__(model=model, query=query)
+        super(GeoQuerySet, self).__init__(model=model, query=query, using=using)
         self.query = query or GeoQuery(self.model)
 
     def values(self, *fields):
@@ -119,6 +119,15 @@ class GeoQuerySet(QuerySet):
         """
         return self._spatial_aggregate(aggregates.Extent3D, **kwargs)
 
+    def force_rhr(self, **kwargs):
+        """
+        Returns a modified version of the Polygon/MultiPolygon in which
+        all of the vertices follow the Right-Hand-Rule.  By default,
+        this is attached as the `force_rhr` attribute on each element
+        of the GeoQuerySet.
+        """
+        return self._geom_attribute('force_rhr', **kwargs)
+
     def geojson(self, precision=8, crs=False, bbox=False, **kwargs):
         """
         Returns a GeoJSON representation of the geomtry field in a `geojson`
@@ -152,6 +161,20 @@ class GeoQuerySet(QuerySet):
              'procedure_fmt' : '%(geo_col)s,%(precision)s,%(options)s',
              }
         return self._spatial_attribute('geojson', s, **kwargs)
+
+    def geohash(self, precision=20, **kwargs):
+        """
+        Returns a GeoHash representation of the given field in a `geohash`
+        attribute on each element of the GeoQuerySet.
+
+        The `precision` keyword may be used to custom the number of
+        _characters_ used in the output GeoHash, the default is 20.
+        """
+        s = {'desc' : 'GeoHash', 
+             'procedure_args': {'precision': precision},
+             'procedure_fmt': '%(geo_col)s,%(precision)s',
+             }
+        return self._spatial_attribute('geohash', s, **kwargs)
 
     def gml(self, precision=8, version=2, **kwargs):
         """
@@ -243,6 +266,17 @@ class GeoQuerySet(QuerySet):
         of this GeoQuerySet; otherwise sets with None.
         """
         return self._geom_attribute('point_on_surface', **kwargs)
+
+    def reverse_geom(self, **kwargs):
+        """
+        Reverses the coordinate order of the geometry, and attaches as a
+        `reverse` attribute on each element of this GeoQuerySet.
+        """
+        s = {'select_field' : GeomField(),}
+        kwargs.setdefault('model_att', 'reverse_geom')
+        if connections[self.db].ops.oracle:
+            s['geo_field_type'] = LineStringField
+        return self._spatial_attribute('reverse', s, **kwargs)
 
     def scale(self, x, y, z=0.0, **kwargs):
         """
@@ -489,7 +523,8 @@ class GeoQuerySet(QuerySet):
 
         # Performing setup for the spatial column, unless told not to.
         if settings.get('setup', True):
-            default_args, geo_field = self._spatial_setup(att, desc=settings['desc'], field_name=field_name)
+            default_args, geo_field = self._spatial_setup(att, desc=settings['desc'], field_name=field_name,
+                                                          geo_field_type=settings.get('geo_field_type', None))
             for k, v in default_args.iteritems(): settings['procedure_args'].setdefault(k, v)
         else:
             geo_field = settings['geo_field']
@@ -632,10 +667,11 @@ class GeoQuerySet(QuerySet):
                     # field is geodetic). However, the PostGIS ST_distance_sphere/spheroid()
                     # procedures may only do queries from point columns to point geometries
                     # some error checking is required.
-                    if not isinstance(geo_field, PointField):
-                        raise ValueError('Spherical distance calculation only supported on PointFields.')
-                    if not str(Geometry(buffer(params[0].ewkb)).geom_type) == 'Point':
-                        raise ValueError('Spherical distance calculation only supported with Point Geometry parameters')
+                    if not backend.geography:
+                        if not isinstance(geo_field, PointField):
+                            raise ValueError('Spherical distance calculation only supported on PointFields.')
+                        if not str(Geometry(buffer(params[0].ewkb)).geom_type) == 'Point':
+                            raise ValueError('Spherical distance calculation only supported with Point Geometry parameters')
                     # The `function` procedure argument needs to be set differently for
                     # geodetic distance calculations.
                     if spheroid:

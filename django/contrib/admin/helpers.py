@@ -17,6 +17,8 @@ ACTION_CHECKBOX_NAME = '_selected_action'
 
 class ActionForm(forms.Form):
     action = forms.ChoiceField(label=_('Action:'))
+    select_across = forms.BooleanField(label='', required=False, initial=0,
+        widget=forms.HiddenInput({'class': 'select-across'}))
 
 checkbox = forms.CheckboxInput({'class': 'action-select'}, lambda value: False)
 
@@ -73,7 +75,7 @@ class Fieldset(object):
 
     def _media(self):
         if 'collapse' in self.classes:
-            return forms.Media(js=['%sjs/admin/CollapsedFieldsets.js' % settings.ADMIN_MEDIA_PREFIX])
+            return forms.Media(js=['%sjs/collapse.min.js' % settings.ADMIN_MEDIA_PREFIX])
         return forms.Media()
     media = property(_media)
 
@@ -194,6 +196,9 @@ class InlineAdminFormSet(object):
             yield InlineAdminForm(self.formset, form, self.fieldsets,
                 self.opts.prepopulated_fields, None, self.readonly_fields,
                 model_admin=self.model_admin)
+
+        yield InlineAdminForm(self.formset, self.formset.empty_form,
+            self.fieldsets, self.opts.prepopulated_fields, None)
 
     def fields(self):
         fk = getattr(self.formset, "fk", None)

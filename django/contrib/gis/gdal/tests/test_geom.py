@@ -59,6 +59,17 @@ class OGRGeomTest(unittest.TestCase):
             geom = OGRGeometry(g.wkt)
             self.assertEqual(g.wkt, geom.wkt)
 
+    def test01a_ewkt(self):
+        "Testing EWKT input/output."
+        for ewkt_val in ('POINT (1 2 3)', 'LINEARRING (0 0,1 1,2 1,0 0)'):
+            # First with ewkt output when no SRID in EWKT
+            self.assertEqual(ewkt_val, OGRGeometry(ewkt_val).ewkt)
+            # No test consumption with an SRID specified.
+            ewkt_val = 'SRID=4326;%s' % ewkt_val
+            geom = OGRGeometry(ewkt_val)
+            self.assertEqual(ewkt_val, geom.ewkt)
+            self.assertEqual(4326, geom.srs.srid)
+
     def test01b_gml(self):
         "Testing GML output."
         for g in wkt_out:
@@ -435,6 +446,16 @@ class OGRGeomTest(unittest.TestCase):
         self.assertEqual('LineString25D', ls_25d.geom_type.name)
         self.assertEqual([1.0, 2.0, 3.0], ls_25d.z)
         self.assertEqual(3, ls_25d.coord_dim)
+
+    def test17_pickle(self):
+        "Testing pickle support."
+        import cPickle
+        g1 = OGRGeometry('LINESTRING(1 1 1,2 2 2,3 3 3)', 'WGS84')
+        g2 = cPickle.loads(cPickle.dumps(g1))
+        self.assertEqual(g1, g2)
+        self.assertEqual(4326, g2.srs.srid)
+        self.assertEqual(g1.srs.wkt, g2.srs.wkt)
+        
 
 def suite():
     s = unittest.TestSuite()

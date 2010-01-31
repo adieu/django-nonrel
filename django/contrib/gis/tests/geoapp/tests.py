@@ -8,7 +8,7 @@ from django.contrib.gis.tests.utils import \
     mysql, oracle, postgis, spatialite
 from django.test import TestCase
 
-from models import Country, City, PennsylvaniaCity, State
+from models import Country, City, PennsylvaniaCity, State, Track
 
 if not spatialite:
     from models import Feature, MinusOneSRID
@@ -426,7 +426,6 @@ class GeoModelTest(TestCase):
     @no_mysql
     def test15_relate(self):
         "Testing the 'relate' lookup type."
-        return
         # To make things more interesting, we will have our Texas reference point in
         # different SRIDs.
         pnt1 = fromstr('POINT (649287.0363174 4177429.4494686)', srid=2847)
@@ -434,7 +433,7 @@ class GeoModelTest(TestCase):
 
         # Not passing in a geometry as first param shoud
         # raise a type error when initializing the GeoQuerySet
-        self.assertRaises(ValueError, Country.objects.filter(mpoly__relate=(23, 'foo')).count)
+        self.assertRaises(ValueError, Country.objects.filter, mpoly__relate=(23, 'foo'))
 
         # Making sure the right exception is raised for the given
         # bad arguments.
@@ -687,6 +686,48 @@ class GeoModelTest(TestCase):
         # SELECT AsText(ST_SnapToGrid("geoapp_country"."mpoly", 0.5, 0.17, 0.05, 0.23)) FROM "geoapp_country" WHERE "geoapp_country"."name" = 'San Marino';
         ref = fromstr('MULTIPOLYGON(((12.4 43.87,12.45 43.87,12.45 44.1,12.5 44.1,12.5 43.87,12.45 43.87,12.4 43.87)))')
         self.failUnless(ref.equals_exact(Country.objects.snap_to_grid(0.05, 0.23, 0.5, 0.17).get(name='San Marino').snap_to_grid, tol))
+
+    @no_mysql
+    @no_spatialite
+    def test28_reverse(self):
+        "Testing GeoQuerySet.reverse_geom()."
+        coords = [ (-95.363151, 29.763374), (-95.448601, 29.713803) ]
+        Track.objects.create(name='Foo', line=LineString(coords))
+        t = Track.objects.reverse_geom().get(name='Foo')
+        coords.reverse()
+        self.assertEqual(tuple(coords), t.reverse_geom.coords)
+        if oracle:
+            self.assertRaises(TypeError, State.objects.reverse_geom)
+        
+    @no_mysql
+    @no_oracle
+    @no_spatialite
+    def test29_force_rhr(self):
+        "Testing GeoQuerySet.force_rhr()."
+        rings = ( ( (0, 0), (5, 0), (0, 5), (0, 0) ),
+                  ( (1, 1), (1, 3), (3, 1), (1, 1) ),
+                  )
+        rhr_rings = ( ( (0, 0), (0, 5), (5, 0), (0, 0) ),
+                      ( (1, 1), (3, 1), (1, 3), (1, 1) ),
+                      )
+        State.objects.create(name='Foo', poly=Polygon(*rings))
+        s = State.objects.force_rhr().get(name='Foo')
+        self.assertEqual(rhr_rings, s.force_rhr.coords)
+
+    @no_mysql
+    @no_oracle
+    @no_spatialite
+    def test29_force_rhr(self):
+        "Testing GeoQuerySet.geohash()."
+        if not connection.ops.geohash: return
+        # Reference query:
+        # SELECT ST_GeoHash(point) FROM geoapp_city WHERE name='Houston';
+        # SELECT ST_GeoHash(point, 5) FROM geoapp_city WHERE name='Houston';
+        ref_hash = '9vk1mfq8jx0c8e0386z6'
+        h1 = City.objects.geohash().get(name='Houston')
+        h2 = City.objects.geohash(precision=5).get(name='Houston')
+        self.assertEqual(ref_hash, h1.geohash)
+        self.assertEqual(ref_hash[:5], h2.geohash)
 
 from test_feeds import GeoFeedTest
 from test_regress import GeoRegressionTests

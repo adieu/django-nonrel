@@ -5,7 +5,7 @@ Classes allowing "generic" relations through ContentType and object-id fields.
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import connection
 from django.db.models import signals
-from django.db import models, DEFAULT_DB_ALIAS
+from django.db import models
 from django.db.models.fields.related import RelatedField, Field, ManyToManyRel
 from django.db.models.loading import get_model
 from django.forms import ModelForm
@@ -129,7 +129,7 @@ class GenericRelation(RelatedField, Field):
         return self.object_id_field_name
 
     def m2m_reverse_name(self):
-        return self.model._meta.pk.column
+        return self.rel.to._meta.pk.column
 
     def contribute_to_class(self, cls, name):
         super(GenericRelation, self).contribute_to_class(cls, name)
@@ -255,7 +255,7 @@ def create_generic_related_manager(superclass):
                     raise TypeError("'%s' instance expected" % self.model._meta.object_name)
                 setattr(obj, self.content_type_field_name, self.content_type)
                 setattr(obj, self.object_id_field_name, self.pk_val)
-                obj.save(using=self.instance._state.db)
+                obj.save()
         add.alters_data = True
 
         def remove(self, *objs):

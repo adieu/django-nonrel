@@ -423,25 +423,6 @@ define the fixture ``mydata.master.json`` or
 have specified that you want to load data onto the ``master``
 database.
 
-Excluding applications from loading
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. versionadded:: 1.2
-
-The :djadminopt:`--exclude` option may be provided to prevent specific
-applications from being loaded.
-
-For example, if you wanted to exclude models from ``django.contrib.auth``
-from being loaded into your database, you would call::
-
-    django-admin.py loaddata mydata.json --exclude auth
-
-This will look for for a JSON fixture called ``mydata`` in all the
-usual locations - including the ``fixtures`` directory of the
-``django.contrib.auth`` application. However, any fixture object that
-identifies itself as belonging to the ``auth`` application (e.g.,
-instance of ``auth.User``) would be ignored by loaddata.
-
 makemessages
 ------------
 
@@ -1028,7 +1009,8 @@ number of roles in which color is used:
     * ``sql_table`` - The name of a model in SQL.
     * ``http_info`` - A 1XX HTTP Informational server response.
     * ``http_success`` - A 2XX HTTP Success server response.
-    * ``http_redirect`` - A 3XX HTTP Redirect server response.
+    * ``http_not_modified`` - A 304 HTTP Not Modified server response.
+    * ``http_redirect`` - A 3XX HTTP Redirect server response other than 304.
     * ``http_not_found`` - A 404 HTTP Not Found server response.
     * ``http_bad_request`` - A 4XX HTTP Bad Request server response other than 404.
     * ``http_server_error`` - A 5XX HTTP Server Error response.

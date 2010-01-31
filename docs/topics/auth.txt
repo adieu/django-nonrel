@@ -25,7 +25,7 @@ The auth system consists of:
 
 .. deprecated:: 1.2
    The Messages component of the auth system will be removed in Django 1.4.
- 
+
 Installation
 ============
 
@@ -243,7 +243,7 @@ Methods
     .. method:: models.User.has_perms(perm_list, obj=None)
 
         Returns ``True`` if the user has each of the specified permissions,
-        where each perm is in the format 
+        where each perm is in the format
         ``"<app label>.<permission codename>"``. If the user is inactive,
         this method will always return ``False``.
 
@@ -351,7 +351,18 @@ Django requires add *and* change permissions as a slight security measure.
 Changing passwords
 ~~~~~~~~~~~~~~~~~~
 
-Change a password with :meth:`~django.contrib.auth.models.User.set_password()`:
+.. versionadded:: 1.2
+   The ``manage.py change_password`` command was added.
+
+:djadmin:`manage.py change_password <username>` offers a method of
+changing a User's password from the command line. It prompts you to
+change the password of a given user which you must enter twice. If
+they both match, the new password will be changed immediately. If you
+do not supply a user, the command will attempt to change the password
+whose username matches the current user.
+
+You can also change a password programmatically, using
+:meth:`~django.contrib.auth.models.User.set_password()`:
 
 .. code-block:: python
 
@@ -1558,6 +1569,38 @@ A full authorization implementation can be found in
 the ``auth_permission`` table most of the time.
 
 .. _django/contrib/auth/backends.py: http://code.djangoproject.com/browser/django/trunk/django/contrib/auth/backends.py
+
+Authorization for anonymous users
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionchanged:: 1.2
+
+An anonymous user is one that is not authenticated i.e. they have provided no
+valid authentication details. However, that does not necessarily mean they are
+not authorized to do anything. At the most basic level, most Web sites
+authorize anonymous users to browse most of the site, and many allow anonymous
+posting of comments etc.
+
+Django's permission framework does not have a place to store permissions for
+anonymous users. However, it has a foundation that allows custom authentication
+backends to specify authorization for anonymous users. This is especially useful
+for the authors of re-usable apps, who can delegate all questions of authorization
+to the auth backend, rather than needing settings, for example, to control
+anonymous access.
+
+To enable this in your own backend, you must set the class attribute
+``supports_anonymous_user`` to ``True``. (This precaution is to maintain
+compatibility with backends that assume that all user objects are actual
+instances of the :class:`django.contrib.auth.models.User` class). With this
+in place, :class:`django.contrib.auth.models.AnonymousUser` will delegate all
+the relevant permission methods to the authentication backends.
+
+A nonexistent ``supports_anonymous_user`` attribute will raise a hidden
+``PendingDeprecationWarning`` if used in Django 1.2. In Django 1.3, this
+warning will be upgraded to a ``DeprecationWarning``, which will be displayed
+loudly. Additionally ``supports_anonymous_user`` will be set to ``False``.
+Django 1.4 will assume that every backend supports anonymous users being
+passed to the authorization methods.
 
 Handling object permissions
 ---------------------------

@@ -357,6 +357,21 @@ Only supported for the ``mysql`` backend (see the `MySQL manual`_ for details).
 
 .. _MySQL manual: MySQL_
 
+.. setting:: TEST_MIRROR
+
+TEST_MIRROR
+~~~~~~~~~~~
+
+Default: ``None``
+
+The alias of the database that this database should mirror during
+testing.
+
+This setting exists to allow for testing of master/slave
+configurations of multiple databases. See the documentation on
+:ref:`testing master/slave configurations
+<topics-testing-masterslave>` for details.
+
 .. setting:: TEST_NAME
 
 TEST_NAME
@@ -371,6 +386,22 @@ tests will use a memory resident database. For all other database engines the
 test database will use the name ``'test_' + DATABASE_NAME``.
 
 See :ref:`topics-testing`.
+
+
+.. setting:: DATABASE_ROUTERS
+
+DATABASE_ROUTERS
+----------------
+
+.. versionadded: 1.2
+
+Default: ``[]`` (Empty list)
+
+The list of routers that will be used to determine which database
+to use when performing a database queries.
+
+See the documentation on :ref:`automatic database routing in multi
+database configurations <topics-db-multi-db-routing>`.
 
 .. setting:: DATE_FORMAT
 

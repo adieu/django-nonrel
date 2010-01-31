@@ -57,7 +57,7 @@ class SDORelate(SpatialFunction):
     "Class for using SDO_RELATE."
     masks = 'TOUCH|OVERLAPBDYDISJOINT|OVERLAPBDYINTERSECT|EQUAL|INSIDE|COVEREDBY|CONTAINS|COVERS|ANYINTERACT|ON'
     mask_regex = re.compile(r'^(%s)(\+(%s))*$' % (masks, masks), re.I)
-    sql_template = "%(function)s(%(geo_col)s, %(geometry)s, 'mask=%(mask)s)' = 'TRUE'"
+    sql_template = "%(function)s(%(geo_col)s, %(geometry)s, 'mask=%(mask)s') = 'TRUE'"
     relate_func = 'SDO_RELATE'
     def __init__(self, mask):
         if not self.mask_regex.match(mask):
@@ -88,6 +88,7 @@ class OracleOperations(DatabaseOperations, BaseSpatialOperations):
     num_points = 'SDO_UTIL.GETNUMVERTICES'
     perimeter = length
     point_on_surface = 'SDO_GEOM.SDO_POINTONSURFACE'
+    reverse = 'SDO_UTIL.REVERSE_LINESTRING'
     sym_difference = 'SDO_GEOM.SDO_XOR'
     transform = 'SDO_CS.TRANSFORM'
     union = 'SDO_GEOM.SDO_UNION'
@@ -127,6 +128,8 @@ class OracleOperations(DatabaseOperations, BaseSpatialOperations):
     gis_terms = ['isnull']
     gis_terms += geometry_functions.keys()
     gis_terms = dict([(term, None) for term in gis_terms])
+
+    truncate_params = {'relate' : None}
 
     def __init__(self, connection):
         super(OracleOperations, self).__init__()

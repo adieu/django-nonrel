@@ -42,8 +42,9 @@ LANGUAGE_CODE = 'en-us'
 # should be the utf-8 encoded local name for the language.
 LANGUAGES = (
     ('ar', gettext_noop('Arabic')),
-    ('bn', gettext_noop('Bengali')),
     ('bg', gettext_noop('Bulgarian')),
+    ('bn', gettext_noop('Bengali')),
+    ('bn', gettext_noop('Bosnian')),
     ('ca', gettext_noop('Catalan')),
     ('cs', gettext_noop('Czech')),
     ('cy', gettext_noop('Welsh')),
@@ -52,27 +53,28 @@ LANGUAGES = (
     ('el', gettext_noop('Greek')),
     ('en', gettext_noop('English')),
     ('es', gettext_noop('Spanish')),
-    ('et', gettext_noop('Estonian')),
     ('es-ar', gettext_noop('Argentinean Spanish')),
+    ('et', gettext_noop('Estonian')),
     ('eu', gettext_noop('Basque')),
     ('fa', gettext_noop('Persian')),
     ('fi', gettext_noop('Finnish')),
     ('fr', gettext_noop('French')),
+    ('fy-nl', gettext_noop('Frisian')),
     ('ga', gettext_noop('Irish')),
     ('gl', gettext_noop('Galician')),
-    ('hu', gettext_noop('Hungarian')),
     ('he', gettext_noop('Hebrew')),
     ('hi', gettext_noop('Hindi')),
     ('hr', gettext_noop('Croatian')),
+    ('hu', gettext_noop('Hungarian')),
     ('is', gettext_noop('Icelandic')),
     ('it', gettext_noop('Italian')),
     ('ja', gettext_noop('Japanese')),
     ('ka', gettext_noop('Georgian')),
-    ('ko', gettext_noop('Korean')),
     ('km', gettext_noop('Khmer')),
     ('kn', gettext_noop('Kannada')),
-    ('lv', gettext_noop('Latvian')),
+    ('ko', gettext_noop('Korean')),
     ('lt', gettext_noop('Lithuanian')),
+    ('lv', gettext_noop('Latvian')),
     ('mk', gettext_noop('Macedonian')),
     ('nl', gettext_noop('Dutch')),
     ('no', gettext_noop('Norwegian')),
@@ -83,6 +85,7 @@ LANGUAGES = (
     ('ru', gettext_noop('Russian')),
     ('sk', gettext_noop('Slovak')),
     ('sl', gettext_noop('Slovenian')),
+    ('sq', gettext_noop('Albanian')),
     ('sr', gettext_noop('Serbian')),
     ('sr-latn', gettext_noop('Serbian Latin')),
     ('sv', gettext_noop('Swedish')),
@@ -128,6 +131,7 @@ SERVER_EMAIL = 'root@localhost'
 SEND_BROKEN_LINK_EMAILS = False
 
 # Database connection info.
+# Legacy format
 DATABASE_ENGINE = ''           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
 DATABASE_NAME = ''             # Or path to database file if using sqlite3.
 DATABASE_USER = ''             # Not used with sqlite3.
@@ -136,8 +140,12 @@ DATABASE_HOST = ''             # Set to empty string for localhost. Not used wit
 DATABASE_PORT = ''             # Set to empty string for default. Not used with sqlite3.
 DATABASE_OPTIONS = {}          # Set to empty dictionary for default.
 
+# New format
 DATABASES = {
 }
+
+# Classes used to implement db routing behaviour
+DATABASE_ROUTERS = []
 
 # The email backend to use. For possible shortcuts see django.core.mail.
 # The default is to use the SMTP backend.
