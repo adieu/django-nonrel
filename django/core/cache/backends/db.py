@@ -12,7 +12,7 @@ except ImportError:
 class CacheClass(BaseCache):
     def __init__(self, table, params):
         BaseCache.__init__(self, params)
-        self._table = table
+        self._table = connection.ops.quote_name(table)
         max_entries = params.get('max_entries', 300)
         try:
             self._max_entries = int(max_entries)
@@ -60,12 +60,14 @@ class CacheClass(BaseCache):
             result = cursor.fetchone()
             if result and (mode == 'set' or
                     (mode == 'add' and result[1] < now)):
-                cursor.execute("UPDATE %s SET value = %%s, expires = %%s WHERE cache_key = %%s" % self._table, [encoded, str(exp), key])
+                cursor.execute("UPDATE %s SET value = %%s, expires = %%s WHERE cache_key = %%s" % self._table,
+                               [encoded, connection.ops.value_to_db_datetime(exp), key])
             else:
-                cursor.execute("INSERT INTO %s (cache_key, value, expires) VALUES (%%s, %%s, %%s)" % self._table, [key, encoded, str(exp)])
+                cursor.execute("INSERT INTO %s (cache_key, value, expires) VALUES (%%s, %%s, %%s)" % self._table,
+                               [key, encoded, connection.ops.value_to_db_datetime(exp)])
         except DatabaseError:
             # To be threadsafe, updates/inserts are allowed to fail silently
-            transaction.rollback()
+            transaction.rollback_unless_managed()
             return False
         else:
             transaction.commit_unless_managed()
@@ -79,14 +81,16 @@ class CacheClass(BaseCache):
     def has_key(self, key):
         now = datetime.now().replace(microsecond=0)
         cursor = connection.cursor()
-        cursor.execute("SELECT cache_key FROM %s WHERE cache_key = %%s and expires > %%s" % self._table, [key, now])
+        cursor.execute("SELECT cache_key FROM %s WHERE cache_key = %%s and expires > %%s" % self._table,
+                       [key, connection.ops.value_to_db_datetime(now)])
         return cursor.fetchone() is not None
 
     def _cull(self, cursor, now):
         if self._cull_frequency == 0:
             self.clear()
         else:
-            cursor.execute("DELETE FROM %s WHERE expires < %%s" % self._table, [str(now)])
+            cursor.execute("DELETE FROM %s WHERE expires < %%s" % self._table,
+                           [connection.ops.value_to_db_datetime(now)])
             cursor.execute("SELECT COUNT(*) FROM %s" % self._table)
             num = cursor.fetchone()[0]
             if num > self._max_entries:
