@@ -155,11 +155,15 @@ class AdminSite(object):
         from django.contrib.contenttypes.models import ContentType
 
         if not LogEntry._meta.installed:
-            raise ImproperlyConfigured("Put 'django.contrib.admin' in your INSTALLED_APPS setting in order to use the admin application.")
+            raise ImproperlyConfigured("Put 'django.contrib.admin' in your "
+                "INSTALLED_APPS setting in order to use the admin application.")
         if not ContentType._meta.installed:
-            raise ImproperlyConfigured("Put 'django.contrib.contenttypes' in your INSTALLED_APPS setting in order to use the admin application.")
-        if 'django.core.context_processors.auth' not in settings.TEMPLATE_CONTEXT_PROCESSORS:
-            raise ImproperlyConfigured("Put 'django.core.context_processors.auth' in your TEMPLATE_CONTEXT_PROCESSORS setting in order to use the admin application.")
+            raise ImproperlyConfigured("Put 'django.contrib.contenttypes' in "
+                "your INSTALLED_APPS setting in order to use the admin application.")
+        if not ('django.contrib.auth.context_processors.auth' in settings.TEMPLATE_CONTEXT_PROCESSORS or
+            'django.core.context_processors.auth' in settings.TEMPLATE_CONTEXT_PROCESSORS):
+            raise ImproperlyConfigured("Put 'django.contrib.auth.context_processors.auth' "
+                "in your TEMPLATE_CONTEXT_PROCESSORS setting in order to use the admin application.")
 
     def admin_view(self, view, cacheable=False):
         """
@@ -192,7 +196,8 @@ class AdminSite(object):
             inner = never_cache(inner)
         # We add csrf_protect here so this function can be used as a utility
         # function for any view, without having to repeat 'csrf_protect'.
-        inner = csrf_protect(inner)
+        if not getattr(view, 'csrf_exempt', False):
+            inner = csrf_protect(inner)
         return update_wrapper(inner, view)
 
     def get_urls(self):

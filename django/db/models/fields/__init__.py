@@ -196,7 +196,7 @@ class Field(object):
             return
         if self._choices and value:
             for option_key, option_value in self.choices:
-                if type(option_value) in (tuple, list):
+                if isinstance(option_value, (list, tuple)):
                     # This is an optgroup, so look inside the group for options.
                     for optgroup_key, optgroup_value in option_value:
                         if value == optgroup_key:
@@ -404,7 +404,7 @@ class Field(object):
         return first_choice + list(self.flatchoices)
 
     def _get_val_from_obj(self, obj):
-        if obj:
+        if obj is not None:
             return getattr(obj, self.attname)
         else:
             return self.get_default()
@@ -431,7 +431,7 @@ class Field(object):
         """Flattened version of choices tuple."""
         flat = []
         for choice, value in self.choices:
-            if type(value) in (list, tuple):
+            if isinstance(value, (list, tuple)):
                 flat.extend(value)
             else:
                 flat.append((choice,value))
@@ -524,9 +524,14 @@ class BooleanField(Field):
         return "BooleanField"
 
     def to_python(self, value):
-        if value in (True, False): return value
-        if value in ('t', 'True', '1'): return True
-        if value in ('f', 'False', '0'): return False
+        if value in (True, False):
+            # if value is 1 or 0 than it's equal to True or False, but we want
+            # to return a true bool for semantic reasons.
+            return bool(value)
+        if value in ('t', 'True', '1'):
+            return True
+        if value in ('f', 'False', '0'):
+            return False
         raise exceptions.ValidationError(self.error_messages['invalid'])
 
     def get_prep_lookup(self, lookup_type, value):
@@ -934,10 +939,16 @@ class NullBooleanField(Field):
         return "NullBooleanField"
 
     def to_python(self, value):
-        if value in (None, True, False): return value
-        if value in ('None',): return None
-        if value in ('t', 'True', '1'): return True
-        if value in ('f', 'False', '0'): return False
+        if value is None:
+            return None
+        if value in (True, False):
+            return bool(value)
+        if value in ('None',):
+            return None
+        if value in ('t', 'True', '1'):
+            return True
+        if value in ('f', 'False', '0'):
+            return False
         raise exceptions.ValidationError(self.error_messages['invalid'])
 
     def get_prep_lookup(self, lookup_type, value):

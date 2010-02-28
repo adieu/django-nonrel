@@ -907,7 +907,7 @@ includes a few other useful built-in views located in
           :file:`registration/password_reset_email.html` if not supplied.
 
         * ``password_reset_form``: Form that will be used to set the password.
-          Defaults to ``SetPasswordForm``.
+          Defaults to :class:`~django.contrib.auth.forms.PasswordResetForm`.
 
         * ``token_generator``: Instance of the class to check the password. This
           will default to ``default_token_generator``, it's an instance of
@@ -1236,8 +1236,8 @@ The currently logged-in user and his/her permissions are made available in the
    Technically, these variables are only made available in the template context
    if you use :class:`~django.template.context.RequestContext` *and* your
    :setting:`TEMPLATE_CONTEXT_PROCESSORS` setting contains
-   ``"django.core.context_processors.auth"``, which is default. For more, see
-   the :ref:`RequestContext docs <subclassing-context-requestcontext>`.
+   ``"django.contrib.auth.context_processors.auth"``, which is default. For
+   more, see the :ref:`RequestContext docs <subclassing-context-requestcontext>`.
 
 Users
 -----

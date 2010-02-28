@@ -22,7 +22,7 @@ from django.utils.tzinfo import LocalTimezone
 
 from context import context_tests
 from custom import custom_filters
-from parser import filter_parsing, variable_parsing
+from parser import token_parsing, filter_parsing, variable_parsing
 from unicode import unicode_tests
 from smartif import *
 
@@ -37,7 +37,9 @@ import filters
 __test__ = {
     'unicode': unicode_tests,
     'context': context_tests,
+    'token_parsing': token_parsing,
     'filter_parsing': filter_parsing,
+    'variable_parsing': variable_parsing,
     'custom_filters': custom_filters,
 }
 
@@ -180,6 +182,14 @@ class Templates(unittest.TestCase):
 
         settings.SETTINGS_MODULE = old_settings_module
         settings.TEMPLATE_DEBUG = old_template_debug
+
+    def test_invalid_block_suggestion(self):
+        # See #7876
+        from django.template import Template, TemplateSyntaxError
+        try:
+            t = Template("{% if 1 %}lala{% endblock %}{% endif %}")
+        except TemplateSyntaxError, e:
+            self.assertEquals(e.args[0], "Invalid block tag: 'endblock', expected 'else' or 'endif'")
 
     def test_templates(self):
         template_tests = self.get_template_tests()
@@ -897,6 +907,11 @@ class Templates(unittest.TestCase):
             'i18n21': ('{% load i18n %}{% blocktrans %}{{ andrew }}{% endblocktrans %}', {'andrew': mark_safe('a & b')}, u'a & b'),
             'i18n22': ('{% load i18n %}{% trans andrew %}', {'andrew': mark_safe('a & b')}, u'a & b'),
 
+            # Use filters with the {% trans %} tag, #5972
+            'i18n23': ('{% load i18n %}{% trans "Page not found"|capfirst|slice:"6:" %}', {'LANGUAGE_CODE': 'de'}, u'nicht gefunden'),
+            'i18n24': ("{% load i18n %}{% trans 'Page not found'|upper %}", {'LANGUAGE_CODE': 'de'}, u'SEITE NICHT GEFUNDEN'),
+            'i18n25': ('{% load i18n %}{% trans somevar|upper %}', {'somevar': 'Page not found', 'LANGUAGE_CODE': 'de'}, u'SEITE NICHT GEFUNDEN'),
+
             ### HANDLING OF TEMPLATE_STRING_IF_INVALID ###################################
 
             'invalidstr01': ('{{ var|default:"Foo" }}', {}, ('Foo','INVALID')),
@@ -1016,11 +1031,20 @@ class Templates(unittest.TestCase):
             'url08': (u'{% url метка_оператора v %}', {'v': 'Ω'}, '/url_tag/%D0%AE%D0%BD%D0%B8%D0%BA%D0%BE%D0%B4/%CE%A9/'),
             'url09': (u'{% url метка_оператора_2 tag=v %}', {'v': 'Ω'}, '/url_tag/%D0%AE%D0%BD%D0%B8%D0%BA%D0%BE%D0%B4/%CE%A9/'),
             'url10': ('{% url regressiontests.templates.views.client_action id=client.id,action="two words" %}', {'client': {'id': 1}}, '/url_tag/client/1/two%20words/'),
+            'url11': ('{% url regressiontests.templates.views.client_action id=client.id,action="==" %}', {'client': {'id': 1}}, '/url_tag/client/1/==/'),
+            'url12': ('{% url regressiontests.templates.views.client_action id=client.id,action="," %}', {'client': {'id': 1}}, '/url_tag/client/1/,/'),
+            'url12': ('{% url regressiontests.templates.views.client_action id=client.id,action=arg|join:"-" %}', {'client': {'id': 1}, 'arg':['a','b']}, '/url_tag/client/1/a-b/'),
 
             # Failures
             'url-fail01': ('{% url %}', {}, template.TemplateSyntaxError),
             'url-fail02': ('{% url no_such_view %}', {}, urlresolvers.NoReverseMatch),
             'url-fail03': ('{% url regressiontests.templates.views.client %}', {}, urlresolvers.NoReverseMatch),
+            'url-fail04': ('{% url view id, %}', {}, template.TemplateSyntaxError),
+            'url-fail05': ('{% url view id= %}', {}, template.TemplateSyntaxError),
+            'url-fail06': ('{% url view a.id=id %}', {}, template.TemplateSyntaxError),
+            'url-fail07': ('{% url view a.id!id %}', {}, template.TemplateSyntaxError),
+            'url-fail08': ('{% url view id="unterminatedstring %}', {}, template.TemplateSyntaxError),
+            'url-fail09': ('{% url view id=", %}', {}, template.TemplateSyntaxError),
 
             # {% url ... as var %}
             'url-asvar01': ('{% url regressiontests.templates.views.index as url %}', {}, ''),

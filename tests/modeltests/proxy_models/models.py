@@ -98,18 +98,18 @@ class UserProxyProxy(UserProxy):
 
 # We can still use `select_related()` to include related models in our querysets.
 class Country(models.Model):
-	name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50)
 
 class State(models.Model):
-	name = models.CharField(max_length=50)
-	country = models.ForeignKey(Country)
+    name = models.CharField(max_length=50)
+    country = models.ForeignKey(Country)
 
-	def __unicode__(self):
-		return self.name
+    def __unicode__(self):
+        return self.name
 
 class StateProxy(State):
-	class Meta:
-		proxy = True
+    class Meta:
+        proxy = True
 
 # Proxy models still works with filters (on related fields)
 # and select_related, even when mixed with model inheritance
@@ -205,6 +205,26 @@ False
 
 >>> MyPersonProxy.objects.all()
 [<MyPersonProxy: Bazza del Frob>, <MyPersonProxy: Foo McBar>, <MyPersonProxy: homer>]
+
+# Proxy models are included in the ancestors for a model's DoesNotExist and MultipleObjectsReturned
+>>> try:
+...     MyPersonProxy.objects.get(name='Zathras')
+... except Person.DoesNotExist:
+...     pass
+>>> try:
+...     MyPersonProxy.objects.get(id__lt=10)
+... except Person.MultipleObjectsReturned:
+...     pass
+>>> try:
+...     StatusPerson.objects.get(name='Zathras')
+... except Person.DoesNotExist:
+...     pass
+>>> sp1 = StatusPerson.objects.create(name='Bazza Jr.')
+>>> sp2 = StatusPerson.objects.create(name='Foo Jr.')
+>>> try:
+...     StatusPerson.objects.get(id__lt=10)
+... except Person.MultipleObjectsReturned:
+...     pass
 
 # And now for some things that shouldn't work...
 #

@@ -3,10 +3,6 @@
 import sys
 import re
 from itertools import cycle as itertools_cycle
-try:
-    reversed
-except NameError:
-    from django.utils.itercompat import reversed     # Python 2.3 fallback
 
 from django.template import Node, NodeList, Template, Context, Variable
 from django.template import TemplateSyntaxError, VariableDoesNotExist, BLOCK_TAG_START, BLOCK_TAG_END, VARIABLE_TAG_START, VARIABLE_TAG_END, SINGLE_BRACE_START, SINGLE_BRACE_END, COMMENT_TAG_START, COMMENT_TAG_END
@@ -599,7 +595,7 @@ def firstof(parser, token):
 
         {% filter force_escape %}
             {% firstof var1 var2 var3 "fallback value" %}
-	{% endfilter %}
+        {% endfilter %}
 
     """
     bits = token.split_contents()[1:]
@@ -1075,6 +1071,13 @@ def templatetag(parser, token):
     return TemplateTagNode(tag)
 templatetag = register.tag(templatetag)
 
+# Regex for URL arguments including filters
+url_arg_re = re.compile(
+    r"(?:(%(name)s)=)?(%(value)s(?:\|%(name)s(?::%(value)s)?)*)" % {
+        'name':'\w+',
+        'value':'''(?:(?:'[^']*')|(?:"[^"]*")|(?:[\w\.-]+))'''},
+    re.VERBOSE)
+
 def url(parser, token):
     """
     Returns an absolute URL matching given view with its parameters.
@@ -1122,13 +1125,20 @@ def url(parser, token):
                 asvar = bits.next()
                 break
             else:
-                for arg in bit.split(","):
-                    if '=' in arg:
-                        k, v = arg.split('=', 1)
-                        k = k.strip()
-                        kwargs[k] = parser.compile_filter(v)
-                    elif arg:
-                        args.append(parser.compile_filter(arg))
+                end = 0
+                for i, match in enumerate(url_arg_re.finditer(bit)):
+                    if (i == 0 and match.start() != 0) or \
+                          (i > 0 and (bit[end:match.start()] != ',')):
+                        raise TemplateSyntaxError("Malformed arguments to url tag")
+                    end = match.end()
+                    name, value = match.group(1), match.group(2)
+                    if name:
+                        kwargs[name] = parser.compile_filter(value)
+                    else:
+                        args.append(parser.compile_filter(value))
+                if end != len(bit):
+                    raise TemplateSyntaxError("Malformed arguments to url tag")
+
     return URLNode(viewname, args, kwargs, asvar)
 url = register.tag(url)
 

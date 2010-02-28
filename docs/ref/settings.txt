@@ -203,7 +203,7 @@ end users) indicating the reason the request was rejected.  See
 DATABASES
 ---------
 
-.. versionadded: 1.2
+.. versionadded:: 1.2
 
 Default: ``{}`` (Empty dictionary)
 
@@ -393,7 +393,7 @@ See :ref:`topics-testing`.
 DATABASE_ROUTERS
 ----------------
 
-.. versionadded: 1.2
+.. versionadded:: 1.2
 
 Default: ``[]`` (Empty list)
 
@@ -410,9 +410,13 @@ DATE_FORMAT
 
 Default: ``'N j, Y'`` (e.g. ``Feb. 4, 2003``)
 
-The default formatting to use for date fields in any part of the system.
-Note that if ``USE_L10N`` is set to ``True``, then locale format will
-be applied. See :ttag:`allowed date format strings <now>`.
+The default formatting to use for displaying date fields in any part of the
+system.  Note that if setting:`USE_L10N` is set to ``True``, then the
+locale-dictated format has higher precedence and will be applied instead. See
+:ttag:`allowed date format strings <now>`.
+
+.. versionchanged:: 1.2
+    This setting can now be overriden by setting ``USE_L10N`` to ``True``.
 
 See also ``DATETIME_FORMAT``, ``TIME_FORMAT`` and ``SHORT_DATE_FORMAT``.
 
@@ -420,6 +424,8 @@ See also ``DATETIME_FORMAT``, ``TIME_FORMAT`` and ``SHORT_DATE_FORMAT``.
 
 DATE_INPUT_FORMATS
 ------------------
+
+.. versionadded:: 1.2
 
 Default::
 
@@ -444,9 +450,13 @@ DATETIME_FORMAT
 
 Default: ``'N j, Y, P'`` (e.g. ``Feb. 4, 2003, 4 p.m.``)
 
-The default formatting to use for datetime fields in any part of the system.
-Note that if ``USE_L10N`` is set to ``True``, then locale format will
-be applied. See :ttag:`allowed date format strings <now>`.
+The default formatting to use for displaying datetime fields in any part of the
+system.  Note that if setting:`USE_L10N` is set to ``True``, then the
+locale-dictated format has higher precedence and will be applied instead. See
+:ttag:`allowed date format strings <now>`.
+
+.. versionchanged:: 1.2
+    This setting can now be overriden by setting ``USE_L10N`` to ``True``.
 
 See also ``DATE_FORMAT``, ``TIME_FORMAT`` and ``SHORT_DATETIME_FORMAT``.
 
@@ -454,6 +464,8 @@ See also ``DATE_FORMAT``, ``TIME_FORMAT`` and ``SHORT_DATETIME_FORMAT``.
 
 DATETIME_INPUT_FORMATS
 ----------------------
+
+.. versionadded:: 1.2
 
 Default::
 
@@ -513,6 +525,8 @@ site.
 
 DECIMAL_SEPARATOR
 -----------------
+
+.. versionadded:: 1.2
 
 Default: ``'.'`` (Dot)
 
@@ -771,6 +785,8 @@ system's standard umask.
 FIRST_DAY_OF_WEEK
 -----------------
 
+.. versionadded:: 1.2
+
 Default: ``0`` (Sunday)
 
 Number representing the first day of the week. This is especially useful
@@ -806,6 +822,8 @@ of the preferred value or not supplied at all.
 
 FORMAT_MODULE_PATH
 ------------------
+
+.. versionadded:: 1.2
 
 Default: ``None``
 
@@ -883,8 +901,8 @@ LANGUAGE_CODE
 Default: ``'en-us'``
 
 A string representing the language code for this installation. This should be in
-standard language format. For example, U.S. English is ``"en-us"``. See
-:ref:`topics-i18n`.
+standard :term:`language format<language code>`. For example, U.S. English is
+``"en-us"``. See :ref:`topics-i18n`.
 
 .. setting:: LANGUAGE_COOKIE_NAME
 
@@ -911,9 +929,11 @@ see the current list of translated languages by looking in
 
 .. _online source: http://code.djangoproject.com/browser/django/trunk/django/conf/global_settings.py
 
-The list is a tuple of two-tuples in the format (language code, language
-name) -- for example, ``('ja', 'Japanese')``. This specifies which languages
-are available for language selection. See :ref:`topics-i18n`.
+The list is a tuple of two-tuples in the format ``(language code, language
+name)``, the ``language code`` part should be a
+:term:`language name<language code>` -- for example, ``('ja', 'Japanese')``.
+This specifies which languages are available for language selection. See
+:ref:`topics-i18n`.
 
 Generally, the default value should suffice. Only set this setting if you want
 to restrict language selection to a subset of the Django-provided languages.
@@ -948,7 +968,7 @@ LOCALE_PATHS
 Default: ``()`` (Empty tuple)
 
 A tuple of directories where Django looks for translation files.
-See :ref:`translations-in-your-own-projects`.
+See :ref:`using-translations-in-your-own-projects`.
 
 .. setting:: LOGIN_REDIRECT_URL
 
@@ -1104,6 +1124,8 @@ See :ttag:`allowed date format strings <now>`. See also ``DATE_FORMAT``,
 NUMBER_GROUPING
 ----------------
 
+.. versionadded:: 1.2
+
 Default: ``0``
 
 Number of digits grouped together on the integer part of a number. Common use
@@ -1203,6 +1225,9 @@ SESSION_ENGINE
 
 .. versionadded:: 1.0
 
+.. versionchanged:: 1.1
+   The ``cache_db`` backend was added
+
 Default: ``django.contrib.sessions.backends.db``
 
 Controls where Django stores session data. Valid values are:
@@ -1210,6 +1235,7 @@ Controls where Django stores session data. Valid values are:
     * ``'django.contrib.sessions.backends.db'``
     * ``'django.contrib.sessions.backends.file'``
     * ``'django.contrib.sessions.backends.cache'``
+    * ``'django.contrib.sessions.backends.cache_db'``
 
 See :ref:`topics-http-sessions`.
 
@@ -1322,11 +1348,14 @@ Whether to save the session data on every request. See
 SHORT_DATE_FORMAT
 -----------------
 
+.. versionadded:: 1.2
+
 Default: ``m/d/Y`` (e.g. ``12/31/2003``)
 
-An available formatting that can be used for date fields on templates.
-Note that if ``USE_L10N`` is set to ``True``, then locale format will
-be applied. See :ttag:`allowed date format strings <now>`.
+An available formatting that can be used for displaying date fields on
+templates.  Note that if ``USE_L10N`` is set to ``True``, then the corresponding
+locale-dictated format has higher precedence and will be applied. See
+:ttag:`allowed date format strings <now>`.
 
 See also ``DATE_FORMAT`` and ``SHORT_DATETIME_FORMAT``.
 
@@ -1335,11 +1364,14 @@ See also ``DATE_FORMAT`` and ``SHORT_DATETIME_FORMAT``.
 SHORT_DATETIME_FORMAT
 ---------------------
 
+.. versionadded:: 1.2
+
 Default: ``m/d/Y P`` (e.g. ``12/31/2003 4 p.m.``)
 
-An available formatting that can be used for datetime fields on templates.
-Note that if ``USE_L10N`` is set to ``True``, then locale format will
-be applied. See :ttag:`allowed date format strings <now>`.
+An available formatting that can be used for displaying datetime fields on
+templates.  Note that if ``USE_L10N`` is set to ``True``, then the corresponding
+locale-dictated format has higher precedence and will be applied. See
+:ttag:`allowed date format strings <now>`.
 
 See also ``DATE_FORMAT`` and ``SHORT_DATETIME_FORMAT``.
 
@@ -1365,7 +1397,7 @@ TEMPLATE_CONTEXT_PROCESSORS
 
 Default::
 
-    ("django.core.context_processors.auth",
+    ("django.contrib.auth.context_processors.auth",
     "django.core.context_processors.debug",
     "django.core.context_processors.i18n",
     "django.core.context_processors.media",
@@ -1379,6 +1411,11 @@ of items to be merged into the context.
    ``"django.contrib.messages.context_processors.messages"`` was added to the
    default.  For more information, see the :ref:`messages documentation
    <ref-contrib-messages>`.
+
+.. versionchanged:: 1.2
+    The auth context processor was moved in this release from its old location
+    ``django.core.context_processors.auth`` to
+    ``django.contrib.auth.context_processors.auth``.
 
 .. setting:: TEMPLATE_DEBUG
 
@@ -1455,12 +1492,14 @@ The name of the class to use for starting the test suite. See
 THOUSAND_SEPARATOR
 ------------------
 
+.. versionadded:: 1.2
+
 Default ``,`` (Comma)
 
 Default thousand separator used when formatting numbers. This setting is
-used only when ``NUMBER_GROUPPING`` is set.
+used only when ``NUMBER_GROUPING`` is set.
 
-See also ``NUMBER_GROUPPING``, ``DECIMAL_SEPARATOR``
+See also ``NUMBER_GROUPING``, ``DECIMAL_SEPARATOR``
 
 .. setting:: TIME_FORMAT
 
@@ -1469,9 +1508,13 @@ TIME_FORMAT
 
 Default: ``'P'`` (e.g. ``4 p.m.``)
 
-The default formatting to use for time fields in any part of the system.
-Note that if ``USE_L10N`` is set to ``True``, then locale format will
-be applied. See :ttag:`allowed date format strings <now>`.
+The default formatting to use for displaying time fields in any part of the
+system.  Note that if setting:`USE_L10N` is set to ``True``, then the
+locale-dictated format has higher precedence and will be applied instead. See
+:ttag:`allowed date format strings <now>`.
+
+.. versionchanged:: 1.2
+    This setting can now be overriden by setting ``USE_L10N`` to ``True``.
 
 See also ``DATE_FORMAT`` and ``DATETIME_FORMAT``.
 
@@ -1479,6 +1522,8 @@ See also ``DATE_FORMAT`` and ``DATETIME_FORMAT``.
 
 TIME_INPUT_FORMATS
 ------------------
+
+.. versionadded:: 1.2
 
 Default: ``('%H:%M:%S', '%H:%M')``
 
@@ -1499,28 +1544,42 @@ TIME_ZONE
 
 Default: ``'America/Chicago'``
 
-A string representing the time zone for this installation. `See available choices`_.
-(Note that list of available choices lists more than one on the same line;
-you'll want to use just one of the choices for a given time zone. For instance,
-one line says ``'Europe/London GB GB-Eire'``, but you should use the first bit
-of that -- ``'Europe/London'`` -- as your ``TIME_ZONE`` setting.)
+.. versionchanged:: 1.2
+   ``None`` was added as an allowed value.
 
-Note that this is the time zone to which Django will convert all dates/times --
-not necessarily the timezone of the server. For example, one server may serve
-multiple Django-powered sites, each with a separate time-zone setting.
+A string representing the time zone for this installation, or
+``None``. `See available choices`_. (Note that list of available
+choices lists more than one on the same line; you'll want to use just
+one of the choices for a given time zone. For instance, one line says
+``'Europe/London GB GB-Eire'``, but you should use the first bit of
+that -- ``'Europe/London'`` -- as your ``TIME_ZONE`` setting.)
 
-Normally, Django sets the ``os.environ['TZ']`` variable to the time zone you
-specify in the ``TIME_ZONE`` setting. Thus, all your views and models will
-automatically operate in the correct time zone. However, if you're manually
-:ref:`manually configuring settings
-<settings-without-django-settings-module>`, Django will *not* touch the ``TZ``
-environment variable, and it'll be up to you to ensure your processes are
-running in the correct environment.
+Note that this is the time zone to which Django will convert all
+dates/times -- not necessarily the timezone of the server. For
+example, one server may serve multiple Django-powered sites, each with
+a separate time-zone setting.
+
+Normally, Django sets the ``os.environ['TZ']`` variable to the time
+zone you specify in the ``TIME_ZONE`` setting. Thus, all your views
+and models will automatically operate in the correct time zone.
+However, Django won't set the ``TZ`` environment variable under the
+following conditions:
+
+ * If you're using the manual configuration option as described in
+   :ref:`manually configuring settings
+   <settings-without-django-settings-module>`, or
+
+ * If you specify ``TIME_ZONE = None``. This will cause Django to fall
+   back to using the system timezone.
+
+If Django doesn't set the ``TZ`` environment variable, it's up to you
+to ensure your processes are running in the correct environment.
 
 .. note::
-    Django cannot reliably use alternate time zones in a Windows environment.
-    If you're running Django on Windows, this variable must be set to match the
-    system timezone.
+    Django cannot reliably use alternate time zones in a Windows
+    environment. If you're running Django on Windows, this variable
+    must be set to match the system timezone.
+
 
 .. _See available choices: http://www.postgresql.org/docs/8.1/static/datetime-keywords.html#DATETIME-TIMEZONE-SET-TABLE
 
@@ -1550,6 +1609,8 @@ is installed (see :ref:`topics-http-middleware`).
 USE_L10N
 --------
 
+.. versionadded:: 1.2
+
 Default ``False``
 
 A boolean that specifies if data will be localized by default or not. If this
@@ -1576,6 +1637,8 @@ See also ``USE_L10N``
 
 USE_THOUSAND_SEPARATOR
 ----------------------
+
+.. versionadded:: 1.2
 
 Default ``False``
 

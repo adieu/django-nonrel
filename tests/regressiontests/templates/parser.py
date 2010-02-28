@@ -2,6 +2,55 @@
 Testing some internals of the template processing. These are *not* examples to be copied in user code.
 """
 
+token_parsing=r"""
+Tests for TokenParser behavior in the face of quoted strings with spaces.
+
+>>> from django.template import TokenParser
+
+
+Test case 1: {% tag thevar|filter sometag %}
+
+>>> p = TokenParser("tag thevar|filter sometag")
+>>> p.tagname
+'tag'
+>>> p.value()
+'thevar|filter'
+>>> p.more()
+True
+>>> p.tag()
+'sometag'
+>>> p.more()
+False
+
+Test case 2: {% tag "a value"|filter sometag %}
+
+>>> p = TokenParser('tag "a value"|filter sometag')
+>>> p.tagname
+'tag'
+>>> p.value()
+'"a value"|filter'
+>>> p.more()
+True
+>>> p.tag()
+'sometag'
+>>> p.more()
+False
+
+Test case 3: {% tag 'a value'|filter sometag %}
+
+>>> p = TokenParser("tag 'a value'|filter sometag")
+>>> p.tagname
+'tag'
+>>> p.value()
+"'a value'|filter"
+>>> p.more()
+True
+>>> p.tag()
+'sometag'
+>>> p.more()
+False
+"""
+
 filter_parsing = r"""
 >>> from django.template import FilterExpression, Parser
 
@@ -27,6 +76,13 @@ u"Some 'Bad' News"
 []
 >>> fe.var
 u'Some "Good" News'
+
+Filtered variables should reject access of attributes beginning with underscores.
+
+>>> FilterExpression('article._hidden|upper', p)
+Traceback (most recent call last):
+...
+TemplateSyntaxError: Variables and attributes may not begin with underscores: 'article._hidden'
 """
 
 variable_parsing = r"""
@@ -56,4 +112,10 @@ u'Some "Good" News'
 >>> Variable(ur"'Some \'Better\' News'").resolve(c)
 u"Some 'Better' News"
 
+Variables should reject access of attributes beginning with underscores.
+
+>>> Variable('article._hidden')
+Traceback (most recent call last):
+...
+TemplateSyntaxError: Variables and attributes may not begin with underscores: 'article._hidden'
 """

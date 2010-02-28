@@ -110,7 +110,7 @@ class UserManager(models.Manager):
             user.set_password(password)
         else:
             user.set_unusable_password()
-        user.save(using=self.db)
+        user.save(using=self._db)
         return user
 
     def create_superuser(self, username, email, password):
@@ -118,7 +118,7 @@ class UserManager(models.Manager):
         u.is_staff = True
         u.is_active = True
         u.is_superuser = True
-        u.save(using=self.db)
+        u.save(using=self._db)
         return u
 
     def make_random_password(self, length=10, allowed_chars='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'):
@@ -336,10 +336,21 @@ class User(models.Model):
         if not hasattr(self, '_profile_cache'):
             from django.conf import settings
             if not getattr(settings, 'AUTH_PROFILE_MODULE', False):
-                raise SiteProfileNotAvailable
+                raise SiteProfileNotAvailable('You need to set AUTH_PROFILE_MO'
+                                              'DULE in your project settings')
             try:
                 app_label, model_name = settings.AUTH_PROFILE_MODULE.split('.')
+            except ValueError:
+                raise SiteProfileNotAvailable('app_label and model_name should'
+                        ' be separated by a dot in the AUTH_PROFILE_MODULE set'
+                        'ting')
+
+            try:
                 model = models.get_model(app_label, model_name)
+                if model is None:
+                    raise SiteProfileNotAvailable('Unable to load the profile '
+                        'model, check AUTH_PROFILE_MODULE in your project sett'
+                        'ings')
                 self._profile_cache = model._default_manager.using(self._state.db).get(user__id__exact=self.id)
                 self._profile_cache.user = self
             except (ImportError, ImproperlyConfigured):

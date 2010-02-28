@@ -11,17 +11,19 @@ from django.contrib.admin.models import LogEntry, DELETION
 from django.contrib.admin.sites import LOGIN_FORM_KEY
 from django.contrib.admin.util import quote
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+from django.forms.util import ErrorList
 from django.utils import formats
 from django.utils.cache import get_max_age
 from django.utils.html import escape
 from django.utils.translation import get_date_formats
+from django.utils.encoding import iri_to_uri
 
 # local test models
 from models import Article, BarAccount, CustomArticle, EmptyModel, \
     ExternalSubscriber, FooAccount, Gallery, ModelWithStringPrimaryKey, \
     Person, Persona, Picture, Podcast, Section, Subscriber, Vodcast, \
     Language, Collector, Widget, Grommet, DooHickey, FancyDoodad, Whatsit, \
-    Category, Post
+    Category, Post, Plot, FunkyTag
 
 
 class AdminViewBasicTest(TestCase):
@@ -636,6 +638,113 @@ class AdminViewPermissionsTest(TestCase):
         response = self.client.get('/test_admin/admin/secure-view/')
         self.assertContains(response, 'id="login-form"')
 
+
+class AdminViewDeletedObjectsTest(TestCase):
+    fixtures = ['admin-views-users.xml', 'deleted-objects.xml']
+
+    def setUp(self):
+        self.client.login(username='super', password='secret')
+
+    def tearDown(self):
+        self.client.logout()
+
+    def test_nesting(self):
+        """
+        Objects should be nested to display the relationships that
+        cause them to be scheduled for deletion.
+        """
+        pattern = re.compile(r"""<li>Plot: <a href=".+/admin_views/plot/1/">World Domination</a>\s*<ul>\s*<li>Plot details: <a href=".+/admin_views/plotdetails/1/">almost finished</a>""")
+        response = self.client.get('/test_admin/admin/admin_views/villain/%s/delete/' % quote(1))
+        self.failUnless(pattern.search(response.content))
+
+    def test_cyclic(self):
+        """
+        Cyclic relationships should still cause each object to only be
+        listed once.
+
+        """
+        one = """<li>Cyclic one: <a href="/test_admin/admin/admin_views/cyclicone/1/">I am recursive</a>"""
+        two = """<li>Cyclic two: <a href="/test_admin/admin/admin_views/cyclictwo/1/">I am recursive too</a>"""
+        response = self.client.get('/test_admin/admin/admin_views/cyclicone/%s/delete/' % quote(1))
+
+        self.assertContains(response, one, 1)
+        self.assertContains(response, two, 1)
+
+    def test_perms_needed(self):
+        self.client.logout()
+        delete_user = User.objects.get(username='deleteuser')
+        delete_user.user_permissions.add(get_perm(Plot,
+            Plot._meta.get_delete_permission()))
+
+        self.failUnless(self.client.login(username='deleteuser',
+                                          password='secret'))
+
+        response = self.client.get('/test_admin/admin/admin_views/plot/%s/delete/' % quote(1))
+        self.assertContains(response, "your account doesn't have permission to delete the following types of objects")
+        self.assertContains(response, "<li>plot details</li>")
+
+
+    def test_not_registered(self):
+        should_contain = """<li>Secret hideout: underground bunker"""
+        response = self.client.get('/test_admin/admin/admin_views/villain/%s/delete/' % quote(1))
+        self.assertContains(response, should_contain, 1)
+
+    def test_multiple_fkeys_to_same_model(self):
+        """
+        If a deleted object has two relationships from another model,
+        both of those should be followed in looking for related
+        objects to delete.
+
+        """
+        should_contain = """<li>Plot: <a href="/test_admin/admin/admin_views/plot/1/">World Domination</a>"""
+        response = self.client.get('/test_admin/admin/admin_views/villain/%s/delete/' % quote(1))
+        self.assertContains(response, should_contain)
+        response = self.client.get('/test_admin/admin/admin_views/villain/%s/delete/' % quote(2))
+        self.assertContains(response, should_contain)
+
+    def test_multiple_fkeys_to_same_instance(self):
+        """
+        If a deleted object has two relationships pointing to it from
+        another object, the other object should still only be listed
+        once.
+
+        """
+        should_contain = """<li>Plot: <a href="/test_admin/admin/admin_views/plot/2/">World Peace</a></li>"""
+        response = self.client.get('/test_admin/admin/admin_views/villain/%s/delete/' % quote(2))
+        self.assertContains(response, should_contain, 1)
+
+    def test_inheritance(self):
+        """
+        In the case of an inherited model, if either the child or
+        parent-model instance is deleted, both instances are listed
+        for deletion, as well as any relationships they have.
+
+        """
+        should_contain = [
+            """<li>Villain: <a href="/test_admin/admin/admin_views/villain/3/">Bob</a>""",
+            """<li>Super villain: <a href="/test_admin/admin/admin_views/supervillain/3/">Bob</a>""",
+            """<li>Secret hideout: floating castle""",
+            """<li>Super secret hideout: super floating castle!"""
+            ]
+        response = self.client.get('/test_admin/admin/admin_views/villain/%s/delete/' % quote(3))
+        for should in should_contain:
+            self.assertContains(response, should, 1)
+        response = self.client.get('/test_admin/admin/admin_views/supervillain/%s/delete/' % quote(3))
+        for should in should_contain:
+            self.assertContains(response, should, 1)
+
+    def test_generic_relations(self):
+        """
+        If a deleted object has GenericForeignKeys pointing to it,
+        those objects should be listed for deletion.
+
+        """
+        plot = Plot.objects.get(pk=3)
+        tag = FunkyTag.objects.create(content_object=plot, name='hott')
+        should_contain = """<li>Funky tag: hott"""
+        response = self.client.get('/test_admin/admin/admin_views/plot/%s/delete/' % quote(3))
+        self.assertContains(response, should_contain)
+
 class AdminViewStringPrimaryKeyTest(TestCase):
     fixtures = ['admin-views-users.xml', 'string-primary-key.xml']
 
@@ -698,7 +807,8 @@ class AdminViewStringPrimaryKeyTest(TestCase):
     def test_deleteconfirmation_link(self):
         "The link from the delete confirmation page referring back to the changeform of the object should be quoted"
         response = self.client.get('/test_admin/admin/admin_views/modelwithstringprimarykey/%s/delete/' % quote(self.pk))
-        should_contain = """<a href="../../%s/">%s</a>""" % (quote(self.pk), escape(self.pk))
+        # this URL now comes through reverse(), thus iri_to_uri encoding
+        should_contain = """/%s/">%s</a>""" % (iri_to_uri(quote(self.pk)), escape(self.pk))
         self.assertContains(response, should_contain)
 
     def test_url_conflicts_with_add(self):
@@ -940,6 +1050,28 @@ class AdminViewListEditable(TestCase):
         # 1 select per object = 3 selects
         self.failUnlessEqual(response.content.count("<select"), 4)
 
+    def test_post_messages(self):
+        # Ticket 12707: Saving inline editable should not show admin
+        # action warnings
+        data = {
+            "form-TOTAL_FORMS": "3",
+            "form-INITIAL_FORMS": "3",
+            "form-MAX_NUM_FORMS": "0",
+
+            "form-0-gender": "1",
+            "form-0-id": "1",
+
+            "form-1-gender": "2",
+            "form-1-id": "2",
+
+            "form-2-alive": "checked",
+            "form-2-gender": "1",
+            "form-2-id": "3",
+        }
+        response = self.client.post('/test_admin/admin/admin_views/person/',
+                                    data, follow=True)
+        self.assertEqual(len(response.context['messages']), 1)
+
     def test_post_submission(self):
         data = {
             "form-TOTAL_FORMS": "3",
@@ -991,6 +1123,36 @@ class AdminViewListEditable(TestCase):
         self.client.post('/test_admin/admin/admin_views/person/?q=mauchly', data)
 
         self.failUnlessEqual(Person.objects.get(name="John Mauchly").alive, False)
+
+    def test_non_form_errors(self):
+        # test if non-form errors are handled; ticket #12716
+        data = {
+            "form-TOTAL_FORMS": "1",
+            "form-INITIAL_FORMS": "1",
+            "form-MAX_NUM_FORMS": "0",
+
+            "form-0-id": "2",
+            "form-0-alive": "1",
+            "form-0-gender": "2",
+        }
+        response = self.client.post('/test_admin/admin/admin_views/person/', data)
+        self.assertContains(response, "Grace is not a Zombie")
+
+    def test_non_form_errors_is_errorlist(self):
+        # test if non-form errors are correctly handled; ticket #12878
+        data = {
+            "form-TOTAL_FORMS": "1",
+            "form-INITIAL_FORMS": "1",
+            "form-MAX_NUM_FORMS": "0",
+
+            "form-0-id": "2",
+            "form-0-alive": "1",
+            "form-0-gender": "2",
+        }
+        response = self.client.post('/test_admin/admin/admin_views/person/', data)
+        non_form_errors = response.context['cl'].formset.non_form_errors()
+        self.assert_(isinstance(non_form_errors, ErrorList))
+        self.assertEqual(str(non_form_errors), str(ErrorList(["Grace is not a Zombie"])))
 
     def test_list_editable_ordering(self):
         collector = Collector.objects.create(id=1, name="Frederick Clegg")

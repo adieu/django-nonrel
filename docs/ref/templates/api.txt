@@ -308,7 +308,7 @@ called **context processors** -- that take a request object as their argument
 and return a dictionary of items to be merged into the context. By default,
 :setting:`TEMPLATE_CONTEXT_PROCESSORS` is set to::
 
-    ("django.core.context_processors.auth",
+    ("django.contrib.auth.context_processors.auth",
     "django.core.context_processors.debug",
     "django.core.context_processors.i18n",
     "django.core.context_processors.media",
@@ -324,6 +324,11 @@ and return a dictionary of items to be merged into the context. By default,
 .. versionadded:: 1.2
    The ``'messages'`` context processor was added.  For more information, see
    the :ref:`messages documentation <ref-contrib-messages>`.
+
+.. versionchanged:: 1.2
+    The auth context processor was moved in this release from its old location
+    ``django.core.context_processors.auth`` to
+    ``django.contrib.auth.context_processors.auth``.
 
 Each processor is applied in order. That means, if one processor adds a
 variable to the context and a second processor adds a variable with the same
@@ -360,8 +365,8 @@ optional, third positional argument, ``processors``. In this example, the
 
 Here's what each of the default processors does:
 
-django.core.context_processors.auth
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+django.contrib.auth.context_processors.auth
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If :setting:`TEMPLATE_CONTEXT_PROCESSORS` contains this processor, every
 ``RequestContext`` will contain these three variables:
@@ -376,6 +381,10 @@ If :setting:`TEMPLATE_CONTEXT_PROCESSORS` contains this processor, every
     * ``perms`` -- An instance of
       ``django.core.context_processors.PermWrapper``, representing the
       permissions that the currently logged-in user has.
+
+.. versionchanged:: 1.2
+    This context processor was moved in this release from
+    ``django.core.context_processors.auth`` to its current location.
 
 .. versionchanged:: 1.2
    Prior to version 1.2, the ``messages`` variable was a lazy accessor for

@@ -382,7 +382,12 @@ class CheckboxInput(Widget):
             # A missing value means False because HTML form submission does not
             # send results for unselected checkboxes.
             return False
-        return super(CheckboxInput, self).value_from_datadict(data, files, name)
+        value = data.get(name)
+        # Translate true and false strings to boolean values.
+        values =  {'true': True, 'false': False}
+        if isinstance(value, basestring):
+            value = values.get(value.lower(), value)
+        return value
 
     def _has_changed(self, initial, data):
         # Sometimes data or initial could be None or u'' which should be the
@@ -452,9 +457,13 @@ class NullBooleanSelect(Select):
                 False: False}.get(value, None)
 
     def _has_changed(self, initial, data):
-        # Sometimes data or initial could be None or u'' which should be the
-        # same thing as False.
-        return bool(initial) != bool(data)
+        # For a NullBooleanSelect, None (unknown) and False (No)
+        # are not the same
+        if initial is not None:
+            initial = bool(initial)
+        if data is not None:
+            data = bool(data)
+        return initial != data
 
 class SelectMultiple(Select):
     def render(self, name, value, attrs=None, choices=()):

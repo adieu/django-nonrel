@@ -1,14 +1,17 @@
-import re
-import os
-import sys
+import fnmatch
 import glob
+import os
+import re
+import sys
 from itertools import dropwhile
 from optparse import make_option
 from subprocess import PIPE, Popen
 
 from django.core.management.base import CommandError, BaseCommand
+from django.utils.text import get_text_list
 
-pythonize_re = re.compile(r'\n\s*//')
+pythonize_re = re.compile(r'(?:^|\n)\s*//')
+plural_forms_re = re.compile(r'^(?P<value>"Plural-Forms.+?\\n")\s*$', re.MULTILINE | re.DOTALL)
 
 def handle_extensions(extensions=('html',)):
     """
@@ -42,7 +45,77 @@ def _popen(cmd):
     p = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE, close_fds=os.name != 'nt', universal_newlines=True)
     return p.communicate()
 
-def make_messages(locale=None, domain='django', verbosity='1', all=False, extensions=None):
+def walk(root, topdown=True, onerror=None, followlinks=False):
+    """
+    A version of os.walk that can follow symlinks for Python < 2.6
+    """
+    for dirpath, dirnames, filenames in os.walk(root, topdown, onerror):
+        yield (dirpath, dirnames, filenames)
+        if followlinks:
+            for d in dirnames:
+                p = os.path.join(dirpath, d)
+                if os.path.islink(p):
+                    for link_dirpath, link_dirnames, link_filenames in walk(p):
+                        yield (link_dirpath, link_dirnames, link_filenames)
+
+def is_ignored(path, ignore_patterns):
+    """
+    Helper function to check if the given path should be ignored or not.
+    """
+    for pattern in ignore_patterns:
+        if fnmatch.fnmatchcase(path, pattern):
+            return True
+    return False
+
+def find_files(root, ignore_patterns, verbosity, symlinks=False):
+    """
+    Helper function to get all files in the given root.
+    """
+    all_files = []
+    for (dirpath, dirnames, filenames) in walk(".", followlinks=symlinks):
+        for f in filenames:
+            norm_filepath = os.path.normpath(os.path.join(dirpath, f))
+            if is_ignored(norm_filepath, ignore_patterns):
+                if verbosity > 1:
+                    sys.stdout.write('ignoring file %s in %s\n' % (f, dirpath))
+            else:
+                all_files.extend([(dirpath, f)])
+    all_files.sort()
+    return all_files
+
+def copy_plural_forms(msgs, locale, domain, verbosity):
+    """
+    Copies plural forms header contents from a Django catalog of locale to
+    the msgs string, inserting it at the right place. msgs should be the
+    contents of a newly created .po file.
+    """
+    import django
+    django_dir = os.path.normpath(os.path.join(os.path.dirname(django.__file__)))
+    if domain == 'djangojs':
+        domains = ('djangojs', 'django')
+    else:
+        domains = ('django',)
+    for domain in domains:
+        django_po = os.path.join(django_dir, 'conf', 'locale', locale, 'LC_MESSAGES', '%s.po' % domain)
+        if os.path.exists(django_po):
+            m = plural_forms_re.search(open(django_po, 'rU').read())
+            if m:
+                if verbosity > 1:
+                    sys.stderr.write("copying plural forms: %s\n" % m.group('value'))
+                lines = []
+                seen = False
+                for line in msgs.split('\n'):
+                    if not line and not seen:
+                        line = '%s\n' % m.group('value')
+                        seen = True
+                    lines.append(line)
+                msgs = '\n'.join(lines)
+                break
+    return msgs
+
+
+def make_messages(locale=None, domain='django', verbosity='1', all=False,
+        extensions=None, symlinks=False, ignore_patterns=[]):
     """
     Uses the locale directory from the Django SVN tree or an application/
     project to process all
@@ -56,8 +129,10 @@ def make_messages(locale=None, domain='django', verbosity='1', all=False, extens
 
     from django.utils.translation import templatize
 
+    invoked_for_django = False
     if os.path.isdir(os.path.join('conf', 'locale')):
         localedir = os.path.abspath(os.path.join('conf', 'locale'))
+        invoked_for_django = True
     elif os.path.isdir('locale'):
         localedir = os.path.abspath('locale')
     else:
@@ -102,13 +177,9 @@ def make_messages(locale=None, domain='django', verbosity='1', all=False, extens
         if os.path.exists(potfile):
             os.unlink(potfile)
 
-        all_files = []
-        for (dirpath, dirnames, filenames) in os.walk("."):
-            all_files.extend([(dirpath, f) for f in filenames])
-        all_files.sort()
-        for dirpath, file in all_files:
+        for dirpath, file in find_files(".", ignore_patterns, verbosity, symlinks=symlinks):
             file_base, file_ext = os.path.splitext(file)
-            if domain == 'djangojs' and file_ext == '.js':
+            if domain == 'djangojs' and file_ext in extensions:
                 if verbosity > 1:
                     sys.stdout.write('processing file %s in %s\n' % (file, dirpath))
                 src = open(os.path.join(dirpath, file), "rU").read()
@@ -171,6 +242,8 @@ def make_messages(locale=None, domain='django', verbosity='1', all=False, extens
                 msgs, errors = _popen('msgmerge -q "%s" "%s"' % (pofile, potfile))
                 if errors:
                     raise CommandError("errors happened while running msgmerge\n%s" % errors)
+            elif not invoked_for_django:
+                msgs = copy_plural_forms(msgs, locale, domain, verbosity)
             open(pofile, 'wb').write(msgs)
             os.unlink(potfile)
 
@@ -186,6 +259,12 @@ class Command(BaseCommand):
         make_option('--extension', '-e', dest='extensions',
             help='The file extension(s) to examine (default: ".html", separate multiple extensions with commas, or use -e multiple times)',
             action='append'),
+        make_option('--symlinks', '-s', action='store_true', dest='symlinks',
+            default=False, help='Follows symlinks to directories when examining source code and templates for translation strings.'),
+        make_option('--ignore', '-i', action='append', dest='ignore_patterns',
+            default=[], metavar='PATTERN', help='Ignore files or directories matching this glob-style pattern. Use multiple times to ignore more.'),
+        make_option('--no-default-ignore', action='store_false', dest='use_default_ignore_patterns',
+            default=True, help="Don't ignore the common glob-style patterns 'CVS', '.*' and '*~'."),
     )
     help = "Runs over the entire source tree of the current directory and pulls out all strings marked for translation. It creates (or updates) a message file in the conf/locale (in the django tree) or locale (for project and application) directory."
 
@@ -200,14 +279,19 @@ class Command(BaseCommand):
         domain = options.get('domain')
         verbosity = int(options.get('verbosity'))
         process_all = options.get('all')
-        extensions = options.get('extensions') or ['html']
+        extensions = options.get('extensions')
+        symlinks = options.get('symlinks')
+        ignore_patterns = options.get('ignore_patterns')
+        if options.get('use_default_ignore_patterns'):
+            ignore_patterns += ['CVS', '.*', '*~']
+        ignore_patterns = list(set(ignore_patterns))
 
         if domain == 'djangojs':
-            extensions = []
+            extensions = handle_extensions(extensions or ['js'])
         else:
-            extensions = handle_extensions(extensions)
+            extensions = handle_extensions(extensions or ['html'])
 
-        if '.js' in extensions:
-            raise CommandError("JavaScript files should be examined by using the special 'djangojs' domain only.")
+        if verbosity > 1:
+            sys.stdout.write('examining files with the extensions: %s\n' % get_text_list(list(extensions), 'and'))
 
-        make_messages(locale, domain, verbosity, process_all, extensions)
+        make_messages(locale, domain, verbosity, process_all, extensions, symlinks, ignore_patterns)

@@ -283,6 +283,11 @@ class DecimalField(Field):
         super(DecimalField, self).validate(value)
         if value in validators.EMPTY_VALUES:
             return
+        # Check for NaN, Inf and -Inf values. We can't compare directly for NaN,
+        # since it is never equal to itself. However, NaN is the only value that
+        # isn't equal to itself, so we can use this to identify NaN
+        if value != value or value == Decimal("Inf") or value == Decimal("-Inf"):
+            raise ValidationError(self.error_messages['invalid'])
         sign, digittuple, exponent = value.as_tuple()
         decimals = abs(exponent)
         # digittuple doesn't include any leading zeros.
@@ -467,7 +472,12 @@ class ImageField(FileField):
         f = super(ImageField, self).to_python(data)
         if f is None:
             return None
-        from PIL import Image
+
+        # Try to import PIL in either of the two ways it can end up installed.
+        try:
+            from PIL import Image
+        except ImportError:
+            import Image
 
         # We need to get a file object for PIL. We might have a path or we might
         # have to read the data into memory.
@@ -579,7 +589,7 @@ class ChoiceField(Field):
 
     def __init__(self, choices=(), required=True, widget=None, label=None,
                  initial=None, help_text=None, *args, **kwargs):
-        super(ChoiceField, self).__init__(required=required, widget=widget, label=label, 
+        super(ChoiceField, self).__init__(required=required, widget=widget, label=label,
                                         initial=initial, help_text=help_text, *args, **kwargs)
         self.choices = choices
 
@@ -611,7 +621,7 @@ class ChoiceField(Field):
     def valid_value(self, value):
         "Check to see if the provided value is a valid choice"
         for k, v in self.choices:
-            if type(v) in (tuple, list):
+            if isinstance(v, (list, tuple)):
                 # This is an optgroup, so look inside the group for options
                 for k2, v2 in v:
                     if value == smart_unicode(k2):

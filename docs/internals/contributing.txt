@@ -402,15 +402,18 @@ translated, here's what to do:
 
     * Join the `Django i18n mailing list`_ and introduce yourself.
 
+    * Make sure you read the notes about :ref:`specialties-of-django-i18n`.
+
     * Create translations using the methods described in the
-      :ref:`i18n documentation <topics-i18n>`. For this you will use the
-      ``django-admin.py makemessages`` tool. In this particular case it should
-      be run from the top-level ``django`` directory of the Django source tree.
+      :ref:`localization documentation <topics-i18n-localization>`. For this
+      you will use the ``django-admin.py makemessages`` tool. In this
+      particular case it should be run from the top-level ``django`` directory
+      of the Django source tree.
 
       The script runs over the entire Django source tree and pulls out all
       strings marked for translation. It creates (or updates) a message file in
-      the directory ``conf/locale`` (for example for ``pt-BR``, the file will be
-      ``conf/locale/pt-br/LC_MESSAGES/django.po``).
+      the directory ``conf/locale`` (for example for ``pt_BR``, the file will be
+      ``conf/locale/pt_BR/LC_MESSAGES/django.po``).
 
     * Make sure that ``django-admin.py compilemessages -l <lang>`` runs without
       producing any warnings.
@@ -419,7 +422,11 @@ translated, here's what to do:
       ``-d djangojs`` command line option to the ``django-admin.py``
       invocations).
 
-    * Create a diff of the ``.po`` file(s) against the current Subversion trunk.
+    * Optionally, review and update the ``conf/locale/<locale>/formats.py``
+      file to describe the date, time and numbers formatting particularities of
+      your locale. See :ref:`format-localization` for details.
+
+    * Create a diff against the current Subversion trunk.
 
     * Open a ticket in Django's ticket system, set its ``Component`` field to
       ``Translations``, and attach the patch to it.
@@ -819,6 +826,20 @@ following is a minimal settings file that can be used to test SQLite::
         }
     }
 
+As a convenience, this settings file is included in your Django
+distribution. It is called ``test_sqlite`, and is included in
+the ``tests`` directory. This allows you to get started running
+the tests against the sqlite database without doing anything on
+your filesystem. However it should be noted that running against
+other database backends is recommended for certain types of test
+cases.
+
+To run the tests with this included settings file, ``cd``
+to the ``tests/`` directory and type:
+
+.. code-block:: bash
+
+    ./runtests.py --settings=test_sqlite
 
 If you're using another backend, you will need to provide other details for
 each database:
@@ -851,6 +872,7 @@ dependencies:
     *  setuptools_
     *  memcached_, plus the either the python-memcached_ or cmemcached_
        Python binding
+    *  gettext_ (:ref:`gettext_on_windows`)
 
 If you want to test the memcached cache backend, you will also need to define
 a :setting:`CACHE_BACKEND` setting that points at your memcached instance.
@@ -866,6 +888,7 @@ associated tests will be skipped.
 .. _memcached: http://www.danga.com/memcached/
 .. _python-memcached: http://pypi.python.org/pypi/python-memcached/
 .. _cmemcached: http://gijsbert.org/cmemcache/index.html
+.. _gettext: http://www.gnu.org/software/gettext/manual/gettext.html
 
 To run a subset of the unit tests, append the names of the test modules to the
 ``runtests.py`` command line. See the list of directories in
@@ -877,7 +900,7 @@ for generic relations and internationalization, type:
 
 .. code-block:: bash
 
-    PYTHONPATH=..
+    PYTHONPATH=`pwd`/..
     ./runtests.py --settings=settings generic_relations i18n
 
 Contrib apps

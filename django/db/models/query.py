@@ -954,7 +954,8 @@ class ValuesListQuerySet(ValuesQuerySet):
             # If a field list has been specified, use it. Otherwise, use the
             # full list of fields, including extras and aggregates.
             if self._fields:
-                fields = self._fields
+                fields = list(self._fields) + filter(lambda f: f not in self._fields,
+                                                     aggregate_names)
             else:
                 fields = names
 
@@ -1202,7 +1203,7 @@ def get_cached_row(klass, row, index_start, max_depth=0, cur_depth=0,
                 # If the base object exists, populate the
                 # descriptor cache
                 setattr(obj, f.get_cache_name(), rel_obj)
-            if f.unique:
+            if f.unique and rel_obj is not None:
                 # If the field is unique, populate the
                 # reverse descriptor cache on the related object
                 setattr(rel_obj, f.related.get_cache_name(), obj)
@@ -1334,6 +1335,9 @@ class RawQuerySet(object):
     def __repr__(self):
         return "<RawQuerySet: %r>" % (self.raw_query % self.params)
 
+    def __getitem__(self, k):
+        return list(self)[k]
+
     @property
     def db(self):
         "Return the database that will be used if this query is executed now"
@@ -1398,7 +1402,7 @@ class RawQuerySet(object):
         # Construct model instance and apply annotations
         skip = set()
         for field in self.model._meta.fields:
-            if field.name not in model_init_kwargs.keys():
+            if field.attname not in model_init_kwargs.keys():
                 skip.add(field.attname)
 
         if skip:

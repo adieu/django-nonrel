@@ -25,8 +25,10 @@ return model instances:
 
 .. method:: Manager.raw(raw_query, params=None, translations=None)
 
-This method method takes a raw SQL query, executes it, and returns model
-instances.
+This method method takes a raw SQL query, executes it, and returns a
+:class:`~django.db.models.query.RawQuerySet` instance. This
+:class:`~django.db.models.query.RawQuerySet` instance can be iterated
+over just like an normal QuerySet to provide object instances.
 
 This is best illustrated with an example. Suppose you've got the following model::
 
@@ -37,8 +39,10 @@ This is best illustrated with an example. Suppose you've got the following model
 
 You could then execute custom SQL like so::
 
-    >>> Person.objects.raw('SELECT * from myapp_person')
-    [<Person: John Doe>, <Person: Jane Doe>, ...]
+    >>> for p in Person.objects.raw('SELECT * FROM myapp_person'):
+    ...     print p
+    John Smith
+    Jane Jones
 
 .. admonition:: Model table names
 
@@ -91,12 +95,26 @@ query could also be written::
     >>> name_map = {'first': 'first_name', 'last': 'last_name', 'bd': 'birth_date', 'pk': 'id'}
     >>> Person.objects.raw('SELECT * FROM some_other_table', translations=name_map)
 
+Index lookups
+-------------
+
+``raw()`` supports indexing, so if you need only the first result you can
+write::
+
+    >>> first_person = Person.objects.raw('SELECT * from myapp_person')[0]
+
+However, the indexing and slicing are not performed at the database level. If
+you have a big amount of ``Person`` objects in your database, it is more
+efficient to limit the query at the SQL level::
+
+    >>> first_person = Person.objects.raw('SELECT * from myapp_person LIMIT 1')[0]
+
 Deferring model fields
 ----------------------
 
 Fields may also be left out::
 
-    >>> people = Person.objects.raw('SELECT id, first_name FROM myapp_person'):
+    >>> people = Person.objects.raw('SELECT id, first_name FROM myapp_person')
 
 The ``Person`` objects returned by this query will be :ref:`deferred
 <queryset-defer>` model instances. This means that the fields that are omitted
@@ -128,7 +146,7 @@ of people with their ages calculated by the database::
 
     >>> people = Person.objects.raw('SELECT *, age(birth_date) AS age FROM myapp_person')
     >>> for p in people:
-    ...   print "%s is %s." % (p.first_name, p.age)
+    ...     print "%s is %s." % (p.first_name, p.age)
     John is 37.
     Jane is 42.
     ...

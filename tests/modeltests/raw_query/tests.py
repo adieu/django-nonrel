@@ -1,7 +1,10 @@
-from django.test import TestCase
-from datetime import datetime
-from models import Author, Book, Coffee, Reviewer
+from datetime import date
+
 from django.db.models.sql.query import InvalidQuery
+from django.test import TestCase
+
+from models import Author, Book, Coffee, Reviewer, FriendlyAuthor
+
 
 class RawQueryTests(TestCase):
 
@@ -186,3 +189,24 @@ class RawQueryTests(TestCase):
             second_iterations += 1
 
         self.assertEqual(first_iterations, second_iterations)
+
+    def testGetItem(self):
+        # Indexing on RawQuerySets
+        query = "SELECT * FROM raw_query_author ORDER BY id ASC"
+        third_author = Author.objects.raw(query)[2]
+        self.assertEqual(third_author.first_name, 'Bob')
+
+        first_two = Author.objects.raw(query)[0:2]
+        self.assertEquals(len(first_two), 2)
+
+        self.assertRaises(TypeError, lambda: Author.objects.raw(query)['test'])
+
+    def test_inheritance(self):
+        # date is the end of the Cuban Missile Crisis, I have no idea when
+        # Wesley was bron
+        f = FriendlyAuthor.objects.create(first_name="Wesley", last_name="Chun",
+            dob=date(1962, 10, 28))
+        query = "SELECT * FROM raw_query_friendlyauthor"
+        self.assertEqual(
+            [o.pk for o in FriendlyAuthor.objects.raw(query)], [f.pk]
+        )

@@ -26,6 +26,7 @@ And here is an inevitably incomplete list of MUCH-APPRECIATED CONTRIBUTORS --
 people who have submitted patches, reported bugs, added translations, helped
 answer newbie questions, and generally made Django that much better:
 
+    Gisle Aas <gisle@aas.no>
     ajs <adi@sieker.info>
     alang@bright-green.com
     Alcides Fonseca
@@ -33,6 +34,7 @@ answer newbie questions, and generally made Django that much better:
     Marty Alchin <gulopine@gamemusic.org>
     Ahmad Alhashemi <trans@ahmadh.com>
     Ahmad Al-Ibrahim
+    Antoni Aloy
     Daniel Alves Barbosa de Oliveira Vaz <danielvaz@gmail.com>
     AgarFu <heaven@croasanaso.sytes.net>
     Dagur Páll Ammendrup <dagurp@gmail.com>
@@ -72,7 +74,7 @@ answer newbie questions, and generally made Django that much better:
     James Bennett
     Julian Bez
     Arvis Bickovskis <viestards.lists@gmail.com>
-    Natalia Bidart
+    Natalia Bidart <nataliabidart@gmail.com>
     Paul Bissex <http://e-scribe.com/>
     Simon Blanchard
     David Blewett <david@dawninglight.net>
@@ -141,6 +143,7 @@ answer newbie questions, and generally made Django that much better:
     Andrew Durdin <adurdin@gmail.com>
     dusk@woofle.net
     Andy Dustman <farcepest@gmail.com>
+    Alexander Dutton <dev@alexdutton.co.uk>
     J. Clifford Dyer <jcd@sdf.lonestar.org>
     Clint Ecker
     Nick Efford <nick@efford.org>
@@ -287,6 +290,7 @@ answer newbie questions, and generally made Django that much better:
     Christopher Lenz <http://www.cmlenz.net/>
     lerouxb@gmail.com
     Piotr Lewandowski <piotr.lewandowski@gmail.com>
+    Charlie Leifer <coleifer@gmail.com>
     Justin Lilly <justinlilly@gmail.com>
     Waylan Limberg <waylan@gmail.com>
     limodou
@@ -298,6 +302,7 @@ answer newbie questions, and generally made Django that much better:
     Martin Mahner <http://www.mahner.org/>
     Matt McClanahan <http://mmcc.cx/>
     Stanislaus Madueke
+    Yann Malet
     Frantisek Malina <vizualbod@vizualbod.com>
     Mike Malone <mjmalone@gmail.com>
     Martin Maney <http://www.chipy.org/Martin_Maney>
@@ -382,6 +387,7 @@ answer newbie questions, and generally made Django that much better:
     Brian Ray <http://brianray.chipy.org/>
     remco@diji.biz
     Marc Remolt <m.remolt@webmasters.de>
+    Bruno Renié <buburno@gmail.com>
     David Reynolds <david@reynoldsfamily.org.uk>
     rhettg@gmail.com
     ricardojbarrios@gmail.com
@@ -462,6 +468,7 @@ answer newbie questions, and generally made Django that much better:
     tt@gurgle.no
     David Tulig <david.tulig@gmail.com>
     Amit Upadhyay <http://www.amitu.com/blog/>
+    Adam Vandenberg
     Geert Vanderkelen
     Vasil Vangelovski
     I.S. van Oostveen <v.oostveen@idca.nl>
@@ -482,8 +489,8 @@ answer newbie questions, and generally made Django that much better:
     Mike Wiacek <mjwiacek@google.com>
     Frank Wierzbicki
     charly.wilhelm@gmail.com
+    Derek Willis <http://blog.thescoop.org/>
     Rachel Willmer <http://www.willmer.com/kb/>
-    Gary Wilson <gary.wilson@gmail.com>
     Jakub Wilk <ubanus@users.sf.net>
     Jakub Wiśniowski <restless.being@gmail.com>
     Maciej Wiśniowski <pigletto@gmail.com>

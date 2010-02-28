@@ -94,6 +94,7 @@ LANGUAGES = (
     ('th', gettext_noop('Thai')),
     ('tr', gettext_noop('Turkish')),
     ('uk', gettext_noop('Ukrainian')),
+    ('vi', gettext_noop('Vietnamese')),
     ('zh-cn', gettext_noop('Simplified Chinese')),
     ('zh-tw', gettext_noop('Traditional Chinese')),
 )
@@ -183,7 +184,7 @@ TEMPLATE_LOADERS = (
 # Each one should be a callable that takes the request object as its
 # only parameter and returns a dictionary to add to the context.
 TEMPLATE_CONTEXT_PROCESSORS = (
-    'django.core.context_processors.auth',
+    'django.contrib.auth.context_processors.auth',
     'django.core.context_processors.debug',
     'django.core.context_processors.i18n',
     'django.core.context_processors.media',
@@ -306,7 +307,7 @@ YEAR_MONTH_FORMAT = 'F Y'
 # http://docs.djangoproject.com/en/dev/ref/templates/builtins/#now
 MONTH_DAY_FORMAT = 'F j'
 
-# Default shortformatting for date objects. See all available format strings here:
+# Default short formatting for date objects. See all available format strings here:
 # http://docs.djangoproject.com/en/dev/ref/templates/builtins/#now
 SHORT_DATE_FORMAT = 'm/d/Y'
 

@@ -471,8 +471,35 @@ Example usage::
 Use the ``--domain`` or ``-d`` option to change the domain of the messages files.
 Currently supported:
 
-	* ``django`` for all ``*.py`` and ``*.html`` files (default)
-	* ``djangojs`` for ``*.js`` files
+    * ``django`` for all ``*.py`` and ``*.html`` files (default)
+    * ``djangojs`` for ``*.js`` files
+
+.. django-admin-option:: --symlinks
+
+Use the ``--symlinks`` or ``-s`` option to follow symlinks to directories when
+looking for new translation strings.
+
+Example usage::
+
+    django-admin.py makemessages --locale=de --symlinks
+
+.. django-admin-option:: --ignore
+
+Use the ``--ignore`` or ``-i`` option to ignore files or directories matching
+the given `glob-style pattern`_. Use multiple times to ignore more.
+
+These patterns are used by default: ``'CVS'``, ``'.*'``, ``'*~'``
+
+Example usage::
+
+    django-admin.py makemessages --locale=en_US --ignore=apps/* --ignore=secret/*.html
+
+.. _`glob-style pattern`: http://docs.python.org/library/glob.html
+
+.. django-admin-option:: --no-default-ignore
+
+Use the ``--no-default-ignore`` option to disable the default values of
+:djadminopt:`--ignore`.
 
 reset <appname appname ...>
 ---------------------------
@@ -975,10 +1002,10 @@ Extra niceties
 Syntax coloring
 ---------------
 
-The ``django-admin.py`` / ``manage.py`` commands that output SQL to
-standard output will use pretty color-coded output if your terminal
-supports ANSI-colored output. It won't use the color codes if you're
-piping the command's output to another program.
+The ``django-admin.py`` / ``manage.py`` commands will use pretty
+color-coded output if your terminal supports ANSI-colored output. It
+won't use the color codes if you're piping the command's output to
+another program.
 
 The colors used for syntax highlighting can be customized. Django
 ships with three color palettes:
@@ -986,7 +1013,7 @@ ships with three color palettes:
     * ``dark``, suited to terminals that show white text on a black
       background. This is the default palette.
 
-    * ``light``, suited to terminals that show white text on a black
+    * ``light``, suited to terminals that show black text on a white
       background.
 
     * ``nocolor``, which disables syntax highlighting.

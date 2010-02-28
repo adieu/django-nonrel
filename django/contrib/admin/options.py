@@ -698,6 +698,11 @@ class ModelAdmin(BaseModelAdmin):
         changelist; it returns an HttpResponse if the action was handled, and
         None otherwise.
         """
+        if 'index' not in request.POST:
+            # If "Go" was not pushed then we can assume the POST was for
+            # an inline edit save and we do not need to validate the form.
+            return None
+
         # There can be multiple action forms on the page (at the top
         # and bottom of the change list, for example). Get the action
         # whose button was pushed.
@@ -1075,9 +1080,7 @@ class ModelAdmin(BaseModelAdmin):
 
         # Populate deleted_objects, a data structure of all related objects that
         # will also be deleted.
-        deleted_objects = [mark_safe(u'%s: <a href="../../%s/">%s</a>' % (escape(force_unicode(capfirst(opts.verbose_name))), object_id, escape(obj))), []]
-        perms_needed = set()
-        get_deleted_objects(deleted_objects, perms_needed, request.user, obj, opts, 1, self.admin_site)
+        (deleted_objects, perms_needed) = get_deleted_objects((obj,), opts, request.user, self.admin_site)
 
         if request.POST: # The user has already confirmed the deletion.
             if perms_needed:
@@ -1182,6 +1185,7 @@ class InlineModelAdmin(BaseModelAdmin):
     template = None
     verbose_name = None
     verbose_name_plural = None
+    can_delete = True
 
     def __init__(self, parent_model, admin_site):
         self.admin_site = admin_site
@@ -1227,6 +1231,7 @@ class InlineModelAdmin(BaseModelAdmin):
             "formfield_callback": curry(self.formfield_for_dbfield, request=request),
             "extra": self.extra,
             "max_num": self.max_num,
+            "can_delete": self.can_delete,
         }
         defaults.update(kwargs)
         return inlineformset_factory(self.parent_model, self.model, **defaults)
