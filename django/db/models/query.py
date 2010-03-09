@@ -433,7 +433,7 @@ class QuerySet(object):
             # objects that are related to the objects that are to be deleted.
             seen_objs = CollectedObjects(seen_objs)
             for object in del_query[:CHUNK_SIZE]:
-                object._collect_sub_objects(seen_objs, connections[self.db])
+                object._collect_sub_objects(seen_objs)
 
             if not seen_objs:
                 break

@@ -190,7 +190,8 @@ class ModelBase(type):
                                         (field.name, name, base.__name__))
                 new_class.add_to_class(field.name, copy.deepcopy(field))
 
-        # TODO: GAE: Emulate multi-table inheritance with PolyModel principle
+        # TODO/NONREL: Emulate multi-table inheritance with PolyModel
+        # principle from GAE
         new_class._meta.has_concrete_parent = has_concrete_parent
 
         if abstract:
@@ -502,13 +503,14 @@ class Model(object):
             pk_set = pk_val is not None
             record_exists = True
             manager = cls._base_manager
-            # TODO: GAE: The App Engine backend could emulate force_insert/_update with a
-            # transaction, but since it's costly we should only do it when the user explicitly
-            # wants it.
-            # By adding support for a blocking @commit_locked transaction (SELECT ... FOR UPDATE)
-            # we could even make that part fully reusable on all backends (the current .exists()
-            # check below isn't really safe if you have lots of concurrent requests.
-            # BTW, and neither is QuerySet.get_or_create).
+            # TODO/NONREL: Some backends could emulate force_insert/_update
+            # with an optimistic transaction, but since it's costly we should
+            # only do it when the user explicitly wants it.
+            # By adding support for an optimistic locking transaction
+            # in Django (SQL: SELECT ... FOR UPDATE) we could even make that
+            # part fully reusable on all backends (the current .exists()
+            # check below isn't really safe if you have lots of concurrent
+            # requests. BTW, and neither is QuerySet.get_or_create).
             try_update = connection.features.distinguishes_insert_from_update
             if not try_update:
                 record_exists = False
@@ -562,7 +564,7 @@ class Model(object):
 
     save_base.alters_data = True
 
-    def _collect_sub_objects(self, seen_objs, connection, parent=None, nullable=False):
+    def _collect_sub_objects(self, seen_objs, parent=None, nullable=False):
         """
         Recursively populates seen_objs with all objects related to this
         object.
@@ -576,8 +578,10 @@ class Model(object):
                          type(parent), parent, nullable):
             return
 
+        using = router.db_for_write(self.__class__, instance=self)
+        connection = connections[using]
         if not connection.features.supports_deleting_related_objects:
-            # TODO: GAE: support deleting related objects in background task
+            # TODO/NONREL: support deleting related objects in background task
             return
 
         for related in self._meta.get_all_related_objects():
@@ -588,7 +592,7 @@ class Model(object):
                 except ObjectDoesNotExist:
                     pass
                 else:
-                    sub_obj._collect_sub_objects(seen_objs, connection, self, related.field.null)
+                    sub_obj._collect_sub_objects(seen_objs, self, related.field.null)
             else:
                 # To make sure we can access all elements, we can't use the
                 # normal manager on the related object. So we work directly
@@ -606,7 +610,7 @@ class Model(object):
                         continue
                 delete_qs = rel_descriptor.delete_manager(self).all()
                 for sub_obj in delete_qs:
-                    sub_obj._collect_sub_objects(seen_objs, connection, self, related.field.null)
+                    sub_obj._collect_sub_objects(seen_objs, self, related.field.null)
 
         # Handle any ancestors (for the model-inheritance case). We do this by
         # traversing to the most remote parent classes -- those with no parents
@@ -621,7 +625,7 @@ class Model(object):
                 continue
             # At this point, parent_obj is base class (no ancestor models). So
             # delete it and all its descendents.
-            parent_obj._collect_sub_objects(seen_objs, connection)
+            parent_obj._collect_sub_objects(seen_objs)
 
     def delete(self, using=None):
         using = using or router.db_for_write(self.__class__, instance=self)
@@ -630,7 +634,7 @@ class Model(object):
 
         # Find all the objects than need to be deleted.
         seen_objs = CollectedObjects()
-        self._collect_sub_objects(seen_objs, connection)
+        self._collect_sub_objects(seen_objs)
 
         # Actually delete the objects.
         delete_objects(seen_objs, using)
