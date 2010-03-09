@@ -87,7 +87,7 @@ ALLOWED_VARIABLE_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01
 
 # what to report as the origin for templates that come from non-loader sources
 # (e.g. strings)
-UNKNOWN_SOURCE="&lt;unknown source&gt;"
+UNKNOWN_SOURCE = '<unknown source>'
 
 # match a variable or block tag and capture the entire tag, including start/end delimiters
 tag_re = re.compile('(%s.*?%s|%s.*?%s|%s.*?%s)' % (re.escape(BLOCK_TAG_START), re.escape(BLOCK_TAG_END),
@@ -104,20 +104,7 @@ builtins = []
 invalid_var_format_string = None
 
 class TemplateSyntaxError(Exception):
-    def __str__(self):
-        try:
-            import cStringIO as StringIO
-        except ImportError:
-            import StringIO
-        output = StringIO.StringIO()
-        output.write(Exception.__str__(self))
-        # Check if we wrapped an exception and print that too.
-        if hasattr(self, 'exc_info'):
-            import traceback
-            output.write('\n\nOriginal ')
-            e = self.exc_info
-            traceback.print_exception(e[0], e[1], e[2], 500, output)
-        return output.getvalue()
+    pass
 
 class TemplateDoesNotExist(Exception):
     pass
@@ -770,6 +757,7 @@ class Node(object):
     # Set this to True for nodes that must be first in the template (although
     # they can be preceded by text nodes.
     must_be_first = False
+    child_nodelists = ('nodelist',)
 
     def render(self, context):
         "Return the node rendered as a string"
@@ -783,8 +771,10 @@ class Node(object):
         nodes = []
         if isinstance(self, nodetype):
             nodes.append(self)
-        if hasattr(self, 'nodelist'):
-            nodes.extend(self.nodelist.get_nodes_by_type(nodetype))
+        for attr in self.child_nodelists:
+            nodelist = getattr(self, attr, None)
+            if nodelist:
+                nodes.extend(nodelist.get_nodes_by_type(nodetype))
         return nodes
 
 class NodeList(list):

@@ -561,16 +561,16 @@ class ModelAdmin(BaseModelAdmin):
             for formset in formsets:
                 for added_object in formset.new_objects:
                     change_message.append(_('Added %(name)s "%(object)s".')
-                                          % {'name': added_object._meta.verbose_name,
+                                          % {'name': force_unicode(added_object._meta.verbose_name),
                                              'object': force_unicode(added_object)})
                 for changed_object, changed_fields in formset.changed_objects:
                     change_message.append(_('Changed %(list)s for %(name)s "%(object)s".')
                                           % {'list': get_text_list(changed_fields, _('and')),
-                                             'name': changed_object._meta.verbose_name,
+                                             'name': force_unicode(changed_object._meta.verbose_name),
                                              'object': force_unicode(changed_object)})
                 for deleted_object in formset.deleted_objects:
                     change_message.append(_('Deleted %(name)s "%(object)s".')
-                                          % {'name': deleted_object._meta.verbose_name,
+                                          % {'name': force_unicode(deleted_object._meta.verbose_name),
                                              'object': force_unicode(deleted_object)})
         change_message = ' '.join(change_message)
         return change_message or _('No fields changed.')
@@ -1037,13 +1037,15 @@ class ModelAdmin(BaseModelAdmin):
         else:
             action_form = None
 
-        if cl.result_count == 1:
-            module_name = force_unicode(opts.verbose_name)
-        else:
-            module_name = force_unicode(opts.verbose_name_plural)
+        selection_note = ungettext('of %(count)d selected',
+            'of %(count)d selected', len(cl.result_list))
+        selection_note_all = ungettext('%(total_count)s selected',
+            'All %(total_count)s selected', cl.result_count)
 
         context = {
-            'module_name': module_name,
+            'module_name': force_unicode(opts.verbose_name_plural),
+            'selection_note': selection_note % {'count': len(cl.result_list)},
+            'selection_note_all': selection_note_all % {'total_count': cl.result_count},
             'title': cl.title,
             'is_popup': cl.is_popup,
             'cl': cl,

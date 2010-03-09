@@ -2,7 +2,7 @@ from datetime import date
 
 from django import db
 from django import forms
-from django.forms.models import modelform_factory
+from django.forms.models import modelform_factory, ModelChoiceField
 from django.conf import settings
 from django.test import TestCase
 
@@ -71,6 +71,25 @@ class OverrideCleanTests(TestCase):
         # form.instance.left will be None if the instance was not constructed
         # by form.full_clean().
         self.assertEquals(form.instance.left, 1)
+
+# Regression test for #12960.
+# Make sure the cleaned_data returned from ModelForm.clean() is applied to the
+# model instance.
+
+class PublicationForm(forms.ModelForm):
+    def clean(self):
+        self.cleaned_data['title'] = self.cleaned_data['title'].upper()
+        return self.cleaned_data
+
+    class Meta:
+        model = Publication
+
+class ModelFormCleanTest(TestCase):
+    def test_model_form_clean_applies_to_model(self):
+        data = {'title': 'test', 'date_published': '2010-2-25'}
+        form = PublicationForm(data)
+        publication = form.save()
+        self.assertEqual(publication.title, 'TEST')
 
 class FPForm(forms.ModelForm):
     class Meta:
@@ -184,3 +203,16 @@ class OneToOneFieldTests(TestCase):
         form = AuthorForm({'publication':u'', 'full_name':'John Doe'}, instance=author)
         self.assert_(not form.is_valid())
 
+
+class ModelChoiceForm(forms.Form):
+    person = ModelChoiceField(Person.objects.all())
+
+
+class TestTicket11183(TestCase):
+    def test_11183(self):
+        form1 = ModelChoiceForm()
+        field1 = form1.fields['person']
+        # To allow the widget to change the queryset of field1.widget.choices correctly, 
+        # without affecting other forms, the following must hold:
+        self.assert_(field1 is not ModelChoiceForm.base_fields['person'])
+        self.assert_(field1.widget.choices.field is field1)

@@ -95,5 +95,19 @@ urlpatterns += patterns('django.views.generic.create_update',
 
 # a view that raises an exception for the debug view
 urlpatterns += patterns('',
-    (r'^raises/$', views.raises)
+    (r'^raises/$', views.raises),
+    (r'^raises404/$', views.raises404),
+)
+
+# rediriects, both temporary and permanent, with non-ASCII targets
+urlpatterns += patterns('django.views.generic.simple',
+    ('^nonascii_redirect/$', 'redirect_to',
+        {'url': u'/views/中文/target/', 'permanent': False}),
+    ('^permanent_nonascii_redirect/$', 'redirect_to',
+        {'url': u'/views/中文/target/', 'permanent': True}),
+)
+
+urlpatterns += patterns('regressiontests.views.views',
+    url(r'view_exception/(?P<n>\d+)/$', 'view_exception', name='view_exception'),
+    url(r'template_exception/(?P<n>\d+)/$', 'template_exception', name='template_exception'),
 )

@@ -24,6 +24,7 @@ from context import context_tests
 from custom import custom_filters
 from parser import token_parsing, filter_parsing, variable_parsing
 from unicode import unicode_tests
+from nodelist import NodelistTest
 from smartif import *
 
 try:
@@ -155,6 +156,43 @@ class Templates(unittest.TestCase):
             test_template_sources('/DIR1/index.HTML', template_dirs,
                                   ['/dir1/index.html'])
 
+    def test_loader_debug_origin(self):
+        # Turn TEMPLATE_DEBUG on, so that the origin file name will be kept with
+        # the compiled templates.
+        old_td, settings.TEMPLATE_DEBUG = settings.TEMPLATE_DEBUG, True
+
+        old_loaders = loader.template_source_loaders
+        loader.template_source_loaders = (filesystem.Loader(),)
+
+        # We rely on the fact that runtests.py sets up TEMPLATE_DIRS to
+        # point to a directory containing a 404.html file. Also that
+        # the file system and app directories loaders both inherit the
+        # load_template method from the BaseLoader class, so we only need
+        # to test one of them.
+        load_name = '404.html'
+        template = loader.get_template(load_name)
+        template_name = template.nodelist[0].source[0].name
+        self.assertTrue(template_name.endswith(load_name),
+            'Template loaded by filesystem loader has incorrect name for debug page: %s' % template_name)
+
+        # Aso test the cached loader, since it overrides load_template
+        cache_loader = cached.Loader(('',))
+        cache_loader._cached_loaders = loader.template_source_loaders
+        loader.template_source_loaders = (cache_loader,)
+
+        template = loader.get_template(load_name)
+        template_name = template.nodelist[0].source[0].name
+        self.assertTrue(template_name.endswith(load_name),
+            'Template loaded through cached loader has incorrect name for debug page: %s' % template_name)
+
+        template = loader.get_template(load_name)
+        template_name = template.nodelist[0].source[0].name
+        self.assertTrue(template_name.endswith(load_name),
+            'Cached template loaded through cached loader has incorrect name for debug page: %s' % template_name)
+
+        loader.template_source_loaders = old_loaders
+        settings.TEMPLATE_DEBUG = old_td
+
     def test_token_smart_split(self):
         # Regression test for #7027
         token = template.Token(template.TOKEN_BLOCK, 'sometag _("Page not found") value|yesno:_("yes,no")')
@@ -178,7 +216,7 @@ class Templates(unittest.TestCase):
         except TemplateSyntaxError, e:
             # Assert that we are getting the template syntax error and not the
             # string encoding error.
-            self.assertEquals(e.args[0], "Caught an exception while rendering: Reverse for 'will_not_match' with arguments '()' and keyword arguments '{}' not found.")
+            self.assertEquals(e.args[0], "Caught NoReverseMatch while rendering: Reverse for 'will_not_match' with arguments '()' and keyword arguments '{}' not found.")
 
         settings.SETTINGS_MODULE = old_settings_module
         settings.TEMPLATE_DEBUG = old_template_debug
@@ -573,6 +611,12 @@ class Templates(unittest.TestCase):
             'if-tag-lte-01': ("{% if 1 <= 1 %}yes{% else %}no{% endif %}", {}, "yes"),
             'if-tag-lte-02': ("{% if 2 <= 1 %}yes{% else %}no{% endif %}", {}, "no"),
 
+            # Contains
+            'if-tag-in-01': ("{% if 1 in x %}yes{% else %}no{% endif %}", {'x':[1]}, "yes"),
+            'if-tag-in-02': ("{% if 2 in x %}yes{% else %}no{% endif %}", {'x':[1]}, "no"),
+            'if-tag-not-in-01': ("{% if 1 not in x %}yes{% else %}no{% endif %}", {'x':[1]}, "no"),
+            'if-tag-not-in-02': ("{% if 2 not in x %}yes{% else %}no{% endif %}", {'x':[1]}, "yes"),
+
             # AND
             'if-tag-and01': ("{% if foo and bar %}yes{% else %}no{% endif %}", {'foo': True, 'bar': True}, 'yes'),
             'if-tag-and02': ("{% if foo and bar %}yes{% else %}no{% endif %}", {'foo': True, 'bar': False}, 'no'),
@@ -848,6 +892,32 @@ class Templates(unittest.TestCase):
 
             # Inheritance from a template with a space in its name should work.
             'inheritance29': ("{% extends 'inheritance 28' %}", {}, '!'),
+
+            # Base template, putting block in a conditional {% if %} tag
+            'inheritance30': ("1{% if optional %}{% block opt %}2{% endblock %}{% endif %}3", {'optional': True}, '123'),
+
+            # Inherit from a template with block wrapped in an {% if %} tag (in parent), still gets overridden
+            'inheritance31': ("{% extends 'inheritance30' %}{% block opt %}two{% endblock %}", {'optional': True}, '1two3'),
+            'inheritance32': ("{% extends 'inheritance30' %}{% block opt %}two{% endblock %}", {}, '13'),
+
+            # Base template, putting block in a conditional {% ifequal %} tag
+            'inheritance33': ("1{% ifequal optional 1 %}{% block opt %}2{% endblock %}{% endifequal %}3", {'optional': 1}, '123'),
+
+            # Inherit from a template with block wrapped in an {% ifequal %} tag (in parent), still gets overridden
+            'inheritance34': ("{% extends 'inheritance33' %}{% block opt %}two{% endblock %}", {'optional': 1}, '1two3'),
+            'inheritance35': ("{% extends 'inheritance33' %}{% block opt %}two{% endblock %}", {'optional': 2}, '13'),
+
+            # Base template, putting block in a {% for %} tag
+            'inheritance36': ("{% for n in numbers %}_{% block opt %}{{ n }}{% endblock %}{% endfor %}_", {'numbers': '123'}, '_1_2_3_'),
+
+            # Inherit from a template with block wrapped in an {% for %} tag (in parent), still gets overridden
+            'inheritance37': ("{% extends 'inheritance36' %}{% block opt %}X{% endblock %}", {'numbers': '123'}, '_X_X_X_'),
+            'inheritance38': ("{% extends 'inheritance36' %}{% block opt %}X{% endblock %}", {}, '_'),
+
+            # The super block will still be found.
+            'inheritance39': ("{% extends 'inheritance30' %}{% block opt %}new{{ block.super }}{% endblock %}", {'optional': True}, '1new23'),
+            'inheritance40': ("{% extends 'inheritance33' %}{% block opt %}new{{ block.super }}{% endblock %}", {'optional': 1}, '1new23'),
+            'inheritance41': ("{% extends 'inheritance36' %}{% block opt %}new{{ block.super }}{% endblock %}", {'numbers': '123'}, '_new1_new2_new3_'),
 
             ### I18N ##################################################################
 

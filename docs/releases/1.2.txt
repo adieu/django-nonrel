@@ -299,6 +299,16 @@ For those following trunk, this change also applies to other decorators
 introduced since 1.1, including ``csrf_protect``, ``cache_control`` and anything
 created using ``decorator_from_middleware``.
 
+``ModelForm.is_valid()`` and ``ModelForm.errors``
+-------------------------------------------------
+
+Much of the validation work for ModelForms has been moved down to the model
+level. As a result, the first time you call ``ModelForm.is_valid()``, access
+``ModelForm.errors`` or otherwise trigger form validation, your model will be
+cleaned in-place. This conversion used to happen when the model was saved. If
+you need an unmodified instance of your model, you should pass a copy to the
+``ModelForm`` constructor.
+
 
 .. _deprecated-features-1.2:
 
@@ -626,9 +636,9 @@ You can now do this:
 There's really no reason to use ``{% ifequal %}`` or ``{% ifnotequal %}``
 anymore, unless you're the nostalgic type.
 
-The operators supported are ``==``, ``!=``, ``<``, ``>``, ``<=``, ``>=`` and
-``in``, all of which work like the Python operators, in addition to ``and``,
-``or`` and ``not``, which were already supported.
+The operators supported are ``==``, ``!=``, ``<``, ``>``, ``<=``, ``>=``,
+``in`` and ``not in``, all of which work like the Python operators, in addition
+ to ``and``, ``or`` and ``not``, which were already supported.
 
 Also, filters may now be used in the ``if`` expression. For example:
 
@@ -742,3 +752,10 @@ views in your :ref:`URLconf <topics-http-urls>`. This means that you can
 maintain complete control over the URL structure of your feeds. Like any other view, feeds views are passed a ``request`` object, so you can
 do anything you would normally do with a view, like user based access control,
 or making a feed a named URL.
+
+Relaxed requirements for usernames
+----------------------------------
+
+The built-in :class:`~django.contrib.auth.models.User` model's
+:attr:`~django.contrib.auth.models.User.username` field now allows a wider range
+of characters, including ``@``, ``+``, ``.`` and ``-`` characters.
