@@ -8,7 +8,11 @@ from django.db import models
 
 class FieldErrors(models.Model):
     charfield = models.CharField()
+    charfield2 = models.CharField(max_length=-1)
+    charfield3 = models.CharField(max_length="bad")
     decimalfield = models.DecimalField()
+    decimalfield2 = models.DecimalField(max_digits=-1, decimal_places=-1)
+    decimalfield3 = models.DecimalField(max_digits="bad", decimal_places="bad")
     filefield = models.FileField()
     choices = models.CharField(max_length=10, choices='bad')
     choices2 = models.CharField(max_length=10, choices=[(1,2,3),(1,2,3)])
@@ -180,12 +184,38 @@ class AbstractRelationModel(models.Model):
 
 class UniqueM2M(models.Model):
     """ Model to test for unique ManyToManyFields, which are invalid. """
-    unique_people = models.ManyToManyField( Person, unique=True )
+    unique_people = models.ManyToManyField(Person, unique=True)
+
+class NonUniqueFKTarget1(models.Model):
+    """ Model to test for non-unique FK target in yet-to-be-defined model: expect an error """
+    tgt = models.ForeignKey('FKTarget', to_field='bad')
+
+class UniqueFKTarget1(models.Model):
+    """ Model to test for unique FK target in yet-to-be-defined model: expect no error """
+    tgt = models.ForeignKey('FKTarget', to_field='good')
+
+class FKTarget(models.Model):
+    bad = models.IntegerField()
+    good = models.IntegerField(unique=True)
+
+class NonUniqueFKTarget2(models.Model):
+    """ Model to test for non-unique FK target in previously seen model: expect an error """
+    tgt = models.ForeignKey(FKTarget, to_field='bad')
+
+class UniqueFKTarget2(models.Model):
+    """ Model to test for unique FK target in previously seen model: expect no error """
+    tgt = models.ForeignKey(FKTarget, to_field='good')
 
 
-model_errors = """invalid_models.fielderrors: "charfield": CharFields require a "max_length" attribute.
-invalid_models.fielderrors: "decimalfield": DecimalFields require a "decimal_places" attribute.
-invalid_models.fielderrors: "decimalfield": DecimalFields require a "max_digits" attribute.
+model_errors = """invalid_models.fielderrors: "charfield": CharFields require a "max_length" attribute that is a positive integer.
+invalid_models.fielderrors: "charfield2": CharFields require a "max_length" attribute that is a positive integer.
+invalid_models.fielderrors: "charfield3": CharFields require a "max_length" attribute that is a positive integer.
+invalid_models.fielderrors: "decimalfield": DecimalFields require a "decimal_places" attribute that is a non-negative integer.
+invalid_models.fielderrors: "decimalfield": DecimalFields require a "max_digits" attribute that is a positive integer.
+invalid_models.fielderrors: "decimalfield2": DecimalFields require a "decimal_places" attribute that is a non-negative integer.
+invalid_models.fielderrors: "decimalfield2": DecimalFields require a "max_digits" attribute that is a positive integer.
+invalid_models.fielderrors: "decimalfield3": DecimalFields require a "decimal_places" attribute that is a non-negative integer.
+invalid_models.fielderrors: "decimalfield3": DecimalFields require a "max_digits" attribute that is a positive integer.
 invalid_models.fielderrors: "filefield": FileFields require an "upload_to" attribute.
 invalid_models.fielderrors: "choices": "choices" should be iterable (e.g., a tuple or list).
 invalid_models.fielderrors: "choices2": "choices" should be a sequence of two-tuples.
@@ -279,4 +309,6 @@ invalid_models.personselfrefm2mexplicit: Many-to-many fields with intermediate t
 invalid_models.abstractrelationmodel: 'fk1' has a relation with model AbstractModel, which has either not been installed or is abstract.
 invalid_models.abstractrelationmodel: 'fk2' has an m2m relation with model AbstractModel, which has either not been installed or is abstract.
 invalid_models.uniquem2m: ManyToManyFields cannot be unique.  Remove the unique argument on 'unique_people'.
+invalid_models.nonuniquefktarget1: Field 'bad' under model 'FKTarget' must have a unique=True constraint.
+invalid_models.nonuniquefktarget2: Field 'bad' under model 'FKTarget' must have a unique=True constraint.
 """

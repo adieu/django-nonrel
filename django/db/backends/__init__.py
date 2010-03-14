@@ -209,7 +209,7 @@ class BaseDatabaseOperations(object):
         from django.utils.encoding import smart_unicode, force_unicode
 
         # Convert params to contain Unicode values.
-        to_unicode = lambda s: force_unicode(s, strings_only=True)
+        to_unicode = lambda s: force_unicode(s, strings_only=True, errors='replace')
         if isinstance(params, (list, tuple)):
             u_params = tuple([to_unicode(val) for val in params])
         else:
@@ -502,11 +502,13 @@ class BaseDatabaseIntrospection(object):
         If only_existing is True, the resulting list will only include the tables
         that actually exist in the database.
         """
-        from django.db import models
+        from django.db import models, router
         tables = set()
         for app in models.get_apps():
             for model in models.get_models(app):
                 if not model._meta.managed:
+                    continue
+                if not router.allow_syncdb(self.connection.alias, model):
                     continue
                 tables.add(model._meta.db_table)
                 tables.update([f.m2m_db_table() for f in model._meta.local_many_to_many])
@@ -516,18 +518,19 @@ class BaseDatabaseIntrospection(object):
 
     def installed_models(self, tables):
         "Returns a set of all models represented by the provided list of table names."
-        from django.db import models
+        from django.db import models, router
         all_models = []
         for app in models.get_apps():
             for model in models.get_models(app):
-                all_models.append(model)
+                if router.allow_syncdb(self.connection.alias, model):
+                    all_models.append(model)
         return set([m for m in all_models
             if self.table_name_converter(m._meta.db_table) in map(self.table_name_converter, tables)
         ])
 
     def sequence_list(self):
         "Returns a list of information about all DB sequences for all models in all apps."
-        from django.db import models
+        from django.db import models, router
 
         apps = models.get_apps()
         sequence_list = []
@@ -535,6 +538,8 @@ class BaseDatabaseIntrospection(object):
         for app in apps:
             for model in models.get_models(app):
                 if not model._meta.managed:
+                    continue
+                if not router.allow_syncdb(self.connection.alias, model):
                     continue
                 for f in model._meta.local_fields:
                     if isinstance(f, models.AutoField):

@@ -37,13 +37,28 @@ def get_validation_errors(outfile, app=None):
                 e.add(opts, '"%s": You can\'t use "id" as a field name, because each model automatically gets an "id" field if none of the fields have primary_key=True. You need to either remove/rename your "id" field or add primary_key=True to a field.' % f.name)
             if f.name.endswith('_'):
                 e.add(opts, '"%s": Field names cannot end with underscores, because this would lead to ambiguous queryset filters.' % f.name)
-            if isinstance(f, models.CharField) and f.max_length in (None, 0):
-                e.add(opts, '"%s": CharFields require a "max_length" attribute.' % f.name)
+            if isinstance(f, models.CharField):
+                try:
+                    max_length = int(f.max_length)
+                    if max_length <= 0:
+                        e.add(opts, '"%s": CharFields require a "max_length" attribute that is a positive integer.' % f.name)
+                except (ValueError, TypeError):
+                    e.add(opts, '"%s": CharFields require a "max_length" attribute that is a positive integer.' % f.name)
             if isinstance(f, models.DecimalField):
-                if f.decimal_places is None:
-                    e.add(opts, '"%s": DecimalFields require a "decimal_places" attribute.' % f.name)
-                if f.max_digits is None:
-                    e.add(opts, '"%s": DecimalFields require a "max_digits" attribute.' % f.name)
+                decimalp_msg ='"%s": DecimalFields require a "decimal_places" attribute that is a non-negative integer.'
+                try:
+                    decimal_places = int(f.decimal_places)
+                    if decimal_places < 0:
+                        e.add(opts, decimalp_msg % f.name)
+                except (ValueError, TypeError):
+                    e.add(opts, decimalp_msg % f.name)
+                mdigits_msg = '"%s": DecimalFields require a "max_digits" attribute that is a positive integer.'
+                try:
+                    max_digits = int(f.max_digits)
+                    if max_digits <= 0:
+                        e.add(opts,  mdigits_msg % f.name)
+                except (ValueError, TypeError):
+                    e.add(opts, mdigits_msg % f.name)
             if isinstance(f, models.FileField) and not f.upload_to:
                 e.add(opts, '"%s": FileFields require an "upload_to" attribute.' % f.name)
             if isinstance(f, models.ImageField):
@@ -79,6 +94,10 @@ def get_validation_errors(outfile, app=None):
                 # so skip the next section
                 if isinstance(f.rel.to, (str, unicode)):
                     continue
+
+                # Make sure the related field specified by a ForeignKey is unique
+                if not f.rel.to._meta.get_field(f.rel.field_name).unique:
+                    e.add(opts, "Field '%s' under model '%s' must have a unique=True constraint." % (f.rel.field_name, f.rel.to.__name__))
 
                 rel_opts = f.rel.to._meta
                 rel_name = RelatedObject(f.rel.to, cls, f).get_accessor_name()
