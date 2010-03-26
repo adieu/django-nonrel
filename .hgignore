@@ -7,3 +7,4 @@ syntax: glob
 *.orig
 desktop.ini
 nbproject
+docs/_build/*
