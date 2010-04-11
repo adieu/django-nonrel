@@ -5,6 +5,7 @@ Various complex queries that have been problematic in the past.
 import datetime
 import pickle
 import sys
+import threading
 
 from django.conf import settings
 from django.db import models, DEFAULT_DB_ALIAS
@@ -44,6 +45,13 @@ class Note(models.Model):
 
     def __unicode__(self):
         return self.note
+
+    def __init__(self, *args, **kwargs):
+        super(Note, self).__init__(*args, **kwargs)
+        # Regression for #13227 -- having an attribute that
+        # is unpickleable doesn't stop you from cloning queries
+        # that use objects of that type as an argument.
+        self.lock = threading.Lock()
 
 class Annotation(models.Model):
     name = models.CharField(max_length=10)
@@ -277,6 +285,16 @@ class Plaything(models.Model):
 
 
 __test__ = {'API_TESTS':"""
+>>> # Regression for #13156 -- exists() queries have minimal SQL
+>>> from django.db import connection
+>>> settings.DEBUG = True
+>>> Tag.objects.exists()
+False
+>>> # Ok - so the exist query worked - but did it include too many columns?
+>>> "id" not in connection.queries[-1]['sql'] and "name" not in connection.queries[-1]['sql']
+True
+>>> settings.DEBUG = False
+
 >>> generic = NamedCategory.objects.create(name="Generic")
 >>> t1 = Tag.objects.create(name='t1', category=generic)
 >>> t2 = Tag.objects.create(name='t2', parent=t1, category=generic)
@@ -417,6 +435,45 @@ constraints.
 []
 >>> Number.objects.filter(Q(num__gt=7) & Q(num__lt=12) | Q(num__lt=4))
 [<Number: 8>]
+
+Bug #12239
+Float was being rounded to integer on gte queries on integer field.  Tests
+show that gt, lt, gte, and lte work as desired.  Note that the fix changes
+get_prep_lookup for gte and lt queries only.
+>>> Number.objects.filter(num__gt=11.9)
+[<Number: 12>]
+>>> Number.objects.filter(num__gt=12)
+[]
+>>> Number.objects.filter(num__gt=12.0)
+[]
+>>> Number.objects.filter(num__gt=12.1)
+[]
+>>> Number.objects.filter(num__lt=12)
+[<Number: 4>, <Number: 8>]
+>>> Number.objects.filter(num__lt=12.0)
+[<Number: 4>, <Number: 8>]
+>>> Number.objects.filter(num__lt=12.1)
+[<Number: 4>, <Number: 8>, <Number: 12>]
+>>> Number.objects.filter(num__gte=11.9)
+[<Number: 12>]
+>>> Number.objects.filter(num__gte=12)
+[<Number: 12>]
+>>> Number.objects.filter(num__gte=12.0)
+[<Number: 12>]
+>>> Number.objects.filter(num__gte=12.1)
+[]
+>>> Number.objects.filter(num__gte=12.9)
+[]
+>>> Number.objects.filter(num__lte=11.9)
+[<Number: 4>, <Number: 8>]
+>>> Number.objects.filter(num__lte=12)
+[<Number: 4>, <Number: 8>, <Number: 12>]
+>>> Number.objects.filter(num__lte=12.0)
+[<Number: 4>, <Number: 8>, <Number: 12>]
+>>> Number.objects.filter(num__lte=12.1)
+[<Number: 4>, <Number: 8>, <Number: 12>]
+>>> Number.objects.filter(num__lte=12.9)
+[<Number: 4>, <Number: 8>, <Number: 12>]
 
 Bug #7872
 Another variation on the disjunctive filtering theme.

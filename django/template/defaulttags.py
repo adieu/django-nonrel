@@ -14,6 +14,8 @@ from django.utils.itercompat import groupby
 from django.utils.safestring import mark_safe
 
 register = Library()
+# Regex for token keyword arguments
+kwarg_re = re.compile(r"(?:(\w+)=)?(.+)")
 
 class AutoEscapeControlNode(Node):
     """Implements the actions of the autoescape tag."""
@@ -1063,13 +1065,6 @@ def templatetag(parser, token):
     return TemplateTagNode(tag)
 templatetag = register.tag(templatetag)
 
-# Regex for URL arguments including filters
-url_arg_re = re.compile(
-    r"(?:(%(name)s)=)?(%(value)s(?:\|%(name)s(?::%(value)s)?)*)" % {
-        'name':'\w+',
-        'value':'''(?:(?:'[^']*')|(?:"[^"]*")|(?:[\w\.-]+))'''},
-    re.VERBOSE)
-
 def url(parser, token):
     """
     Returns an absolute URL matching given view with its parameters.
@@ -1077,7 +1072,11 @@ def url(parser, token):
     This is a way to define links that aren't tied to a particular URL
     configuration::
 
-        {% url path.to.some_view arg1,arg2,name1=value1 %}
+        {% url path.to.some_view arg1 arg2 %}
+
+        or
+
+        {% url path.to.some_view name1=value1 name2=value2 %}
 
     The first argument is a path to a view. It can be an absolute python path
     or just ``app_name.view_name`` without the project name if the view is
@@ -1109,27 +1108,53 @@ def url(parser, token):
     args = []
     kwargs = {}
     asvar = None
+    bits = bits[2:]
+    if len(bits) >= 2 and bits[-2] == 'as':
+        asvar = bits[-1]
+        bits = bits[:-2]
 
-    if len(bits) > 2:
-        bits = iter(bits[2:])
-        for bit in bits:
-            if bit == 'as':
-                asvar = bits.next()
+    # Backwards compatibility: check for the old comma separated format
+    # {% url urlname arg1,arg2 %}
+    # Initial check - that the first space separated bit has a comma in it
+    if bits and ',' in bits[0]:
+        check_old_format = True
+        # In order to *really* be old format, there must be a comma
+        # in *every* space separated bit, except the last.
+        for bit in bits[1:-1]:
+            if ',' not in bit:
+                # No comma in this bit. Either the comma we found
+                # in bit 1 was a false positive (e.g., comma in a string),
+                # or there is a syntax problem with missing commas
+                check_old_format = False
                 break
+    else:
+        # No comma found - must be new format.
+        check_old_format = False
+
+    if check_old_format:
+        # Confirm that this is old format by trying to parse the first
+        # argument. An exception will be raised if the comma is
+        # unexpected (i.e. outside of a static string).
+        match = kwarg_re.match(bits[0])
+        if match:
+            value = match.groups()[1]
+            try:
+                parser.compile_filter(value)
+            except TemplateSyntaxError:
+                bits = ''.join(bits).split(',')
+
+    # Now all the bits are parsed into new format,
+    # process them as template vars
+    if len(bits):
+        for bit in bits:
+            match = kwarg_re.match(bit)
+            if not match:
+                raise TemplateSyntaxError("Malformed arguments to url tag")
+            name, value = match.groups()
+            if name:
+                kwargs[name] = parser.compile_filter(value)
             else:
-                end = 0
-                for i, match in enumerate(url_arg_re.finditer(bit)):
-                    if (i == 0 and match.start() != 0) or \
-                          (i > 0 and (bit[end:match.start()] != ',')):
-                        raise TemplateSyntaxError("Malformed arguments to url tag")
-                    end = match.end()
-                    name, value = match.group(1), match.group(2)
-                    if name:
-                        kwargs[name] = parser.compile_filter(value)
-                    else:
-                        args.append(parser.compile_filter(value))
-                if end != len(bit):
-                    raise TemplateSyntaxError("Malformed arguments to url tag")
+                args.append(parser.compile_filter(value))
 
     return URLNode(viewname, args, kwargs, asvar)
 url = register.tag(url)

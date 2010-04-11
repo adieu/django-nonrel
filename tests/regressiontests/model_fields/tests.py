@@ -6,7 +6,7 @@ from django import forms
 from django.db import models
 from django.core.exceptions import ValidationError
 
-from models import Foo, Bar, Whiz, BigD, BigS, Image, BigInt, Post, NullBooleanModel
+from models import Foo, Bar, Whiz, BigD, BigS, Image, BigInt, Post, NullBooleanModel, BooleanModel
 
 try:
     from decimal import Decimal
@@ -44,7 +44,7 @@ class BasicFieldTests(django.test.TestCase):
         """
         Regression test for #13071: NullBooleanField should not throw
         a validation error when given a value of None.
-        
+
         """
         nullboolean = NullBooleanModel(nbfield=None)
         try:
@@ -161,6 +161,42 @@ class BooleanFieldTests(unittest.TestCase):
 
         f = models.BooleanField(choices=choices, default=1, null=False)
         self.assertEqual(f.formfield().choices, choices)
+
+    def test_return_type(self):
+        b = BooleanModel()
+        b.bfield = True
+        b.save()
+        b2 = BooleanModel.objects.get(pk=b.pk)
+        self.assertTrue(isinstance(b2.bfield, bool))
+        self.assertEqual(b2.bfield, True)
+
+        b3 = BooleanModel()
+        b3.bfield = False
+        b3.save()
+        b4 = BooleanModel.objects.get(pk=b3.pk)
+        self.assertTrue(isinstance(b4.bfield, bool))
+        self.assertEqual(b4.bfield, False)
+
+        b = NullBooleanModel()
+        b.nbfield = True
+        b.save()
+        b2 = NullBooleanModel.objects.get(pk=b.pk)
+        self.assertTrue(isinstance(b2.nbfield, bool))
+        self.assertEqual(b2.nbfield, True)
+
+        b3 = NullBooleanModel()
+        b3.nbfield = False
+        b3.save()
+        b4 = NullBooleanModel.objects.get(pk=b3.pk)
+        self.assertTrue(isinstance(b4.nbfield, bool))
+        self.assertEqual(b4.nbfield, False)
+
+        # http://code.djangoproject.com/ticket/13293
+        # Verify that when an extra clause exists, the boolean
+        # conversions are applied with an offset
+        b5 = BooleanModel.objects.all().extra(
+            select={'string_length': 'LENGTH(string)'})[0]
+        self.assertFalse(isinstance(b5.pk, bool))
 
 class ChoicesTests(django.test.TestCase):
     def test_choices_and_field_display(self):

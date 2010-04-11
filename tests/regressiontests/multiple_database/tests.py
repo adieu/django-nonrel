@@ -1,8 +1,11 @@
 import datetime
 import pickle
+import sys
+from StringIO import StringIO
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core import management
 from django.db import connections, router, DEFAULT_DB_ALIAS
 from django.db.utils import ConnectionRouter
 from django.test import TestCase
@@ -971,6 +974,19 @@ class RouterTestCase(TestCase):
         water = Book(title="Dive into Water", published=datetime.date(2001, 1, 1), editor=mark)
         self.assertEquals(water._state.db, 'default')
 
+        # If you create an object through a FK relation, it will be
+        # written to the write database, even if the original object
+        # was on the read database
+        cheesecake = mark.edited.create(title='Dive into Cheesecake', published=datetime.date(2010, 3, 15))
+        self.assertEquals(cheesecake._state.db, 'default')
+
+        # Same goes for get_or_create, regardless of whether getting or creating
+        cheesecake, created = mark.edited.get_or_create(title='Dive into Cheesecake', published=datetime.date(2010, 3, 15))
+        self.assertEquals(cheesecake._state.db, 'default')
+
+        puddles, created = mark.edited.get_or_create(title='Dive into Puddles', published=datetime.date(2010, 3, 15))
+        self.assertEquals(puddles._state.db, 'default')
+
     def test_m2m_cross_database_protection(self):
         "M2M relations can cross databases if the database share a source"
         # Create books and authors on the inverse to the usual database
@@ -1074,6 +1090,19 @@ class RouterTestCase(TestCase):
         self.assertEquals(Book.authors.through.objects.using('default').count(), 1)
         self.assertEquals(Book.authors.through.objects.using('other').count(), 0)
 
+        # If you create an object through a M2M relation, it will be
+        # written to the write database, even if the original object
+        # was on the read database
+        alice = dive.authors.create(name='Alice')
+        self.assertEquals(alice._state.db, 'default')
+
+        # Same goes for get_or_create, regardless of whether getting or creating
+        alice, created = dive.authors.get_or_create(name='Alice')
+        self.assertEquals(alice._state.db, 'default')
+
+        bob, created = dive.authors.get_or_create(name='Bob')
+        self.assertEquals(bob._state.db, 'default')
+
     def test_generic_key_cross_database_protection(self):
         "Generic Key operations can span databases if they share a source"
         # Create a book and author on the default database
@@ -1150,6 +1179,13 @@ class RouterTestCase(TestCase):
         review3.content_object = dive
         self.assertEquals(review3._state.db, 'default')
 
+        # If you create an object through a M2M relation, it will be
+        # written to the write database, even if the original object
+        # was on the read database
+        dive = Book.objects.using('other').get(title='Dive into Python')
+        nyt = dive.reviews.create(source="New York Times", content_object=dive)
+        self.assertEquals(nyt._state.db, 'default')
+
     def test_subquery(self):
         """Make sure as_sql works with subqueries and master/slave."""
         # Create a book and author on the other database
@@ -1178,9 +1214,18 @@ class AuthTestCase(TestCase):
         self.old_routers = router.routers
         router.routers = [AuthRouter()]
 
+        # Redirect stdout to a buffer so we can test
+        # the output of a management command
+        self.old_stdout = sys.stdout
+        self.stdout = StringIO()
+        sys.stdout = self.stdout
+
     def tearDown(self):
         # Restore the 'other' database as an independent database
         router.routers = self.old_routers
+
+        # Restore stdout
+        sys.stdout = self.old_stdout
 
     def test_auth_manager(self):
         "The methods on the auth manager obey database hints"
@@ -1209,6 +1254,22 @@ class AuthTestCase(TestCase):
         # That is... there is one user on each database
         self.assertEquals(User.objects.using('default').count(), 1)
         self.assertEquals(User.objects.using('other').count(), 1)
+
+    def test_dumpdata(self):
+        "Check that dumpdata honors allow_syncdb restrictions on the router"
+        User.objects.create_user('alice', 'alice@example.com')
+        User.objects.db_manager('default').create_user('bob', 'bob@example.com')
+
+        # Check that dumping the default database doesn't try to include auth
+        # because allow_syncdb prohibits auth on default
+        self.stdout.flush()
+        management.call_command('dumpdata', 'auth', format='json', database='default')
+        self.assertEquals(self.stdout.getvalue(), '[]\n')
+
+        # Check that dumping the other database does include auth
+        self.stdout.flush()
+        management.call_command('dumpdata', 'auth', format='json', database='other')
+        self.assertTrue('alice@example.com' in self.stdout.getvalue())
 
 class UserProfileTestCase(TestCase):
     def setUp(self):
@@ -1273,7 +1334,6 @@ class FixtureTestCase(TestCase):
             Book.objects.using('other').get(title="The Definitive Guide to Django")
         except Book.DoesNotExist:
             self.fail('"The Definitive Guide to Django" should exist on both databases')
-
 
 class PickleQuerySetTestCase(TestCase):
     multi_db = True

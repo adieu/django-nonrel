@@ -67,6 +67,9 @@ class Post(models.Model):
 class NullBooleanModel(models.Model):
     nbfield = models.NullBooleanField()
 
+class BooleanModel(models.Model):
+    bfield = models.BooleanField()
+    string = models.CharField(max_length=10, default='abc')
 
 ###############################################################################
 # ImageField

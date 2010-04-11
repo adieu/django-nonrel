@@ -265,21 +265,31 @@ class DistanceTest(unittest.TestCase):
 
     def test05_geodetic_distance_lookups(self):
         "Testing distance lookups on geodetic coordinate systems."
-        if not oracle:
-            # Oracle doesn't have this limitation -- PostGIS only allows geodetic
-            # distance queries from Points to PointFields on geometry columns (geography
-            # columns don't have that limitation).
-            mp = GEOSGeometry('MULTIPOINT(0 0, 5 23)')
-            self.assertRaises(ValueError, len,
-                              AustraliaCity.objects.filter(point__distance_lte=(mp, D(km=100))))
+        # Line is from Canberra to Sydney.  Query is for all other cities within
+        # a 100km of that line (which should exclude only Hobart & Adelaide).
+        line = GEOSGeometry('LINESTRING(144.9630 -37.8143,151.2607 -33.8870)', 4326)
+        dist_qs = AustraliaCity.objects.filter(point__distance_lte=(line, D(km=100)))
+
+        if oracle or connection.ops.geography:
+            # Oracle and PostGIS 1.5 can do distance lookups on arbitrary geometries.
+            self.assertEqual(9, dist_qs.count())
+            self.assertEqual(['Batemans Bay', 'Canberra', 'Hillsdale',
+                              'Melbourne', 'Mittagong', 'Shellharbour',
+                              'Sydney', 'Thirroul', 'Wollongong'],
+                             self.get_names(dist_qs))
+        else:
+            # PostGIS 1.4 and below only allows geodetic distance queries (utilizing
+            # ST_Distance_Sphere/ST_Distance_Spheroid) from Points to PointFields
+            # on geometry columns.
+            self.assertRaises(ValueError, dist_qs.count)
 
             # Ensured that a ValueError was raised, none of the rest of the test is
             # support on this backend, so bail now.
             if spatialite: return
 
-            # Too many params (4 in this case) should raise a ValueError.
-            self.assertRaises(ValueError, len,
-                              AustraliaCity.objects.filter(point__distance_lte=('POINT(5 23)', D(km=100), 'spheroid', '4')))
+        # Too many params (4 in this case) should raise a ValueError.
+        self.assertRaises(ValueError, len,
+                          AustraliaCity.objects.filter(point__distance_lte=('POINT(5 23)', D(km=100), 'spheroid', '4')))
 
         # Not enough params should raise a ValueError.
         self.assertRaises(ValueError, len,
@@ -361,6 +371,17 @@ class DistanceTest(unittest.TestCase):
         # Running on points; should return 0.
         for i, c in enumerate(SouthTexasCity.objects.perimeter(model_att='perim')):
             self.assertEqual(0, c.perim.m)
+
+    def test09_measurement_null_fields(self):
+        "Testing the measurement GeoQuerySet methods on fields with NULL values."
+        # Creating SouthTexasZipcode w/NULL value.
+        SouthTexasZipcode.objects.create(name='78212')
+        # Performing distance/area queries against the NULL PolygonField,
+        # and ensuring the result of the operations is None.
+        htown = SouthTexasCity.objects.get(name='Downtown Houston')
+        z = SouthTexasZipcode.objects.distance(htown.point).area().get(name='78212')
+        self.assertEqual(None, z.distance)
+        self.assertEqual(None, z.area)
 
 def suite():
     s = unittest.TestSuite()

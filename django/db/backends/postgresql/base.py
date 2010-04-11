@@ -76,7 +76,7 @@ class UnicodeCursorWrapper(object):
             return getattr(self.cursor, attr)
 
     def __iter__(self):
-        return iter(self.cursor)
+        return iter(self.cursor.fetchall())
 
 class DatabaseFeatures(BaseDatabaseFeatures):
     uses_savepoints = True
@@ -146,9 +146,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             if self._version[0:2] < (8, 0):
                 # No savepoint support for earlier version of PostgreSQL.
                 self.features.uses_savepoints = False
-        cursor.execute("SET client_encoding to 'UNICODE'")
-        cursor = UnicodeCursorWrapper(cursor, 'utf-8')
-        return cursor
+            cursor.execute("SET client_encoding to 'UNICODE'")
+        return UnicodeCursorWrapper(cursor, 'utf-8')
 
 def typecast_string(s):
     """

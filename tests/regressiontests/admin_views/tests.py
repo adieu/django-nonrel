@@ -217,6 +217,16 @@ class AdminViewBasicTest(TestCase):
         response = self.client.get('/test_admin/%s/admin_views/thing/' % self.urlbit, {'color__id__exact': 'StringNotInteger!'})
         self.assertRedirects(response, '/test_admin/%s/admin_views/thing/?e=1' % self.urlbit)
 
+    def testIsNullLookups(self):
+        """Ensure is_null is handled correctly."""
+        Article.objects.create(title="I Could Go Anywhere", content="Versatile", date=datetime.datetime.now())
+        response = self.client.get('/test_admin/%s/admin_views/article/' % self.urlbit)
+        self.assertTrue('4 articles' in response.content, '"4 articles" missing from response')
+        response = self.client.get('/test_admin/%s/admin_views/article/' % self.urlbit, {'section__isnull': 'false'})
+        self.assertTrue('3 articles' in response.content, '"3 articles" missing from response')
+        response = self.client.get('/test_admin/%s/admin_views/article/' % self.urlbit, {'section__isnull': 'true'})
+        self.assertTrue('1 article' in response.content, '"1 article" missing from response')
+
     def testLogoutAndPasswordChangeURLs(self):
         response = self.client.get('/test_admin/%s/admin_views/article/' % self.urlbit)
         self.failIf('<a href="/test_admin/%s/logout/">' % self.urlbit not in response.content)
@@ -596,6 +606,12 @@ class AdminViewPermissionsTest(TestCase):
         self.assertTemplateUsed(request, 'custom_admin/change_form.html')
         request = self.client.get('/test_admin/admin/admin_views/customarticle/1/delete/')
         self.assertTemplateUsed(request, 'custom_admin/delete_confirmation.html')
+        request = self.client.post('/test_admin/admin/admin_views/customarticle/', data={
+                'index': 0,
+                'action': ['delete_selected'],
+                '_selected_action': ['1'],
+            })
+        self.assertTemplateUsed(request, 'custom_admin/delete_selected_confirmation.html')
         request = self.client.get('/test_admin/admin/admin_views/customarticle/1/history/')
         self.assertTemplateUsed(request, 'custom_admin/object_history.html')
 
@@ -1330,7 +1346,6 @@ class AdminActionsTest(TestCase):
         delete_confirmation_data = {
             ACTION_CHECKBOX_NAME: [1, 2],
             'action' : 'delete_selected',
-            'index': 0,
             'post': 'yes',
         }
         confirmation = self.client.post('/test_admin/admin/admin_views/subscriber/', action_data)
@@ -1941,7 +1956,7 @@ class ReadonlyTest(TestCase):
         self.assertNotContains(response, 'name="posted"')
         # 3 fields + 2 submit buttons + 4 inline management form fields, + 2
         # hidden fields for inlines + 1 field for the inline + 2 empty form
-        self.assertEqual(response.content.count("input"), 14)
+        self.assertEqual(response.content.count("<input"), 14)
         self.assertContains(response, formats.localize(datetime.date.today()))
         self.assertContains(response,
             "<label>Awesomeness level:</label>")
@@ -1951,6 +1966,12 @@ class ReadonlyTest(TestCase):
         self.assertContains(response,
             formats.localize(datetime.date.today() - datetime.timedelta(days=7))
         )
+
+        self.assertContains(response, '<div class="form-row coolness">')
+        self.assertContains(response, '<div class="form-row awesomeness_level">')
+        self.assertContains(response, '<div class="form-row posted">')
+        self.assertContains(response, '<div class="form-row value">')
+        self.assertContains(response, '<div class="form-row ">')
 
         p = Post.objects.create(title="I worked on readonly_fields", content="Its good stuff")
         response = self.client.get('/test_admin/admin/admin_views/post/%d/' % p.pk)
@@ -1976,6 +1997,11 @@ class ReadonlyTest(TestCase):
         self.assertEqual(Post.objects.count(), 2)
         p = Post.objects.order_by('-id')[0]
         self.assertEqual(p.posted, datetime.date.today())
+
+    def test_readonly_manytomany(self):
+        "Regression test for #13004"
+        response = self.client.get('/test_admin/admin/admin_views/pizza/add/')
+        self.assertEqual(response.status_code, 200)
 
 class IncompleteFormTest(TestCase):
     """

@@ -27,7 +27,7 @@ class Article(models.Model):
     title = models.CharField(max_length=100)
     content = models.TextField()
     date = models.DateTimeField()
-    section = models.ForeignKey(Section)
+    section = models.ForeignKey(Section, null=True, blank=True)
 
     def __unicode__(self):
         return self.title
@@ -35,6 +35,7 @@ class Article(models.Model):
     def model_year(self):
         return self.date.year
     model_year.admin_order_field = 'date'
+    model_year.short_description = ''
 
 class Book(models.Model):
     """
@@ -103,6 +104,7 @@ class ArticleAdmin(admin.ModelAdmin):
     def modeladmin_year(self, obj):
         return obj.date.year
     modeladmin_year.admin_order_field = 'date'
+    modeladmin_year.short_description = None
 
 class CustomArticle(models.Model):
     content = models.TextField()
@@ -117,6 +119,7 @@ class CustomArticleAdmin(admin.ModelAdmin):
     add_form_template = 'custom_admin/add_form.html'
     object_history_template = 'custom_admin/object_history.html'
     delete_confirmation_template = 'custom_admin/delete_confirmation.html'
+    delete_selected_confirmation_template = 'custom_admin/delete_selected_confirmation.html'
 
     def changelist_view(self, request):
         "Test that extra_context works"
@@ -471,7 +474,7 @@ class Post(models.Model):
 
 class PostAdmin(admin.ModelAdmin):
     list_display = ['title', 'public']
-    readonly_fields = ('posted', 'awesomeness_level', 'coolness', lambda obj: "foo")
+    readonly_fields = ('posted', 'awesomeness_level', 'coolness', 'value', lambda obj: "foo")
 
     inlines = [
         LinkInline
@@ -483,6 +486,9 @@ class PostAdmin(admin.ModelAdmin):
         else:
             return "Unkown coolness."
 
+    def value(self, instance):
+        return 1000
+    value.short_description = 'Value in $US'
 
 class Gadget(models.Model):
     name = models.CharField(max_length=100)
@@ -563,6 +569,16 @@ class CyclicTwo(models.Model):
     def __unicode__(self):
         return self.name
 
+class Topping(models.Model):
+    name = models.CharField(max_length=20)
+
+class Pizza(models.Model):
+    name = models.CharField(max_length=20)
+    toppings = models.ManyToManyField('Topping')
+
+class PizzaAdmin(admin.ModelAdmin):
+    readonly_fields = ('toppings',)
+
 admin.site.register(Article, ArticleAdmin)
 admin.site.register(CustomArticle, CustomArticleAdmin)
 admin.site.register(Section, save_as=True, inlines=[ArticleInline])
@@ -607,3 +623,5 @@ admin.site.register(CyclicTwo)
 admin.site.register(Book, inlines=[ChapterInline])
 admin.site.register(Promo)
 admin.site.register(ChapterXtra1)
+admin.site.register(Pizza, PizzaAdmin)
+admin.site.register(Topping)

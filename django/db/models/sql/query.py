@@ -37,8 +37,23 @@ class RawQuery(object):
         self.using = using
         self.cursor = None
 
+        # Mirror some properties of a normal query so that
+        # the compiler can be used to process results.
+        self.low_mark, self.high_mark = 0, None  # Used for offset/limit
+        self.extra_select = {}
+        self.aggregate_select = {}
+
     def clone(self, using):
         return RawQuery(self.sql, using, params=self.params)
+
+    def convert_values(self, value, field, connection):
+        """Convert the database-returned value into a type that is consistent
+        across database backends.
+
+        By default, this defers to the underlying backend operations, but
+        it can be overridden by Query classes for specific backends.
+        """
+        return connection.ops.convert_values(value, field)
 
     def get_columns(self):
         if self.cursor is None:
@@ -189,6 +204,11 @@ class Query(object):
             raise ValueError("Need either using or connection")
         if using:
             connection = connections[using]
+
+        # Check that the compiler will be able to execute the query
+        for alias, aggregate in self.aggregate_select.items():
+            connection.ops.check_aggregate_support(aggregate)
+
         return connection.ops.compiler(self.compiler)(self, connection, using)
 
     def get_meta(self):
@@ -240,10 +260,12 @@ class Query(object):
             obj.aggregate_select_mask = None
         else:
             obj.aggregate_select_mask = self.aggregate_select_mask.copy()
-        if self._aggregate_select_cache is None:
-            obj._aggregate_select_cache = None
-        else:
-            obj._aggregate_select_cache = self._aggregate_select_cache.copy()
+        # _aggregate_select_cache cannot be copied, as doing so breaks the
+        # (necessary) state in which both aggregates and
+        # _aggregate_select_cache point to the same underlying objects.
+        # It will get re-populated in the cloned queryset the next time it's
+        # used.
+        obj._aggregate_select_cache = None
         obj.max_depth = self.max_depth
         obj.extra = self.extra.copy()
         if self.extra_select_mask is None:
@@ -376,9 +398,12 @@ class Query(object):
 
     def has_results(self, using):
         q = self.clone()
-        q.add_fields(())
+        q.select = []
+        q.select_fields = []
+        q.default_cols = False
+        q.select_related = False
         q.set_aggregate_mask(())
-        q.clear_ordering()
+        q.clear_ordering(True)
         q.set_limits(high=1)
         compiler = q.get_compiler(using=using)
         return compiler.has_results()

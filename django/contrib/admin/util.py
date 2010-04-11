@@ -1,5 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.forms.forms import pretty_name
 from django.utils import formats
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
@@ -108,29 +109,6 @@ def get_deleted_objects(objs, opts, user, admin_site, levels_to_root=4):
         # TODO using a private model API!
         obj._collect_sub_objects(collector)
 
-    # TODO This next bit is needed only because GenericRelations are
-    # cascade-deleted way down in the internals in
-    # DeleteQuery.delete_batch_related, instead of being found by
-    # _collect_sub_objects. Refs #12593.
-    from django.contrib.contenttypes import generic
-    for f in obj._meta.many_to_many:
-        if isinstance(f, generic.GenericRelation):
-            rel_manager = f.value_from_object(obj)
-            for related in rel_manager.all():
-                # There's a wierdness here in the case that the
-                # generic-related object also has FKs pointing to it
-                # from elsewhere. DeleteQuery does not follow those
-                # FKs or delete any such objects explicitly (which is
-                # probably a bug). Some databases may cascade those
-                # deletes themselves, and some won't. So do we report
-                # those objects as to-be-deleted? No right answer; for
-                # now we opt to report only on objects that Django
-                # will explicitly delete, at risk that some further
-                # objects will be silently deleted by a
-                # referential-integrity-maintaining database.
-                collector.add(related.__class__, related.pk, related,
-                              obj.__class__, obj)
-
     perms_needed = set()
 
     to_delete = collector.nested(_format_callback,
@@ -187,6 +165,10 @@ class NestedObjects(object):
         collected objects should be nested for display.
         """
         model, pk = type(obj), obj._get_pk_val()
+
+        # auto-created M2M models don't interest us
+        if model._meta.auto_created:
+            return True
 
         key = model, pk
 
@@ -322,9 +304,9 @@ def label_for_field(name, model, model_admin=None, return_attr=False):
                 if attr.__name__ == "<lambda>":
                     label = "--"
                 else:
-                    label = attr.__name__
+                    label = pretty_name(attr.__name__)
             else:
-                label = name
+                label = pretty_name(name)
     if return_attr:
         return (label, attr)
     else:

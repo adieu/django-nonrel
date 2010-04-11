@@ -58,6 +58,7 @@ csrf_protect_m = method_decorator(csrf_protect)
 
 class BaseModelAdmin(object):
     """Functionality common to both ModelAdmin and InlineAdmin."""
+    __metaclass__ = forms.MediaDefiningClass
 
     raw_id_fields = ()
     fields = None
@@ -186,7 +187,6 @@ class BaseModelAdmin(object):
 
 class ModelAdmin(BaseModelAdmin):
     "Encapsulates all admin options and functionality for a given model."
-    __metaclass__ = forms.MediaDefiningClass
 
     list_display = ('__str__',)
     list_display_links = ()
@@ -206,6 +206,7 @@ class ModelAdmin(BaseModelAdmin):
     change_form_template = None
     change_list_template = None
     delete_confirmation_template = None
+    delete_selected_confirmation_template = None
     object_history_template = None
 
     # Actions
@@ -273,6 +274,7 @@ class ModelAdmin(BaseModelAdmin):
             js.extend(['js/jquery.min.js', 'js/actions.min.js'])
         if self.prepopulated_fields:
             js.append('js/urlify.js')
+            js.append('js/prepopulate.js')
         if self.opts.get_ordered_objects():
             js.extend(['js/getElementsBySelector.js', 'js/dom-drag.js' , 'js/admin/ordering.js'])
 
@@ -698,10 +700,6 @@ class ModelAdmin(BaseModelAdmin):
         changelist; it returns an HttpResponse if the action was handled, and
         None otherwise.
         """
-        if 'index' not in request.POST:
-            # If "Go" was not pushed then we can assume the POST was for
-            # an inline edit save and we do not need to validate the form.
-            return None
 
         # There can be multiple action forms on the page (at the top
         # and bottom of the change list, for example). Get the action
@@ -978,9 +976,9 @@ class ModelAdmin(BaseModelAdmin):
             return HttpResponseRedirect(request.path + '?' + ERROR_FLAG + '=1')
 
         # If the request was POSTed, this might be a bulk action or a bulk edit.
-        # Try to look up an action first, but if this isn't an action the POST
-        # will fall through to the bulk edit check, below.
-        if actions and request.method == 'POST':
+        # Try to look up an action or confirmation first, but if this isn't an
+        # action the POST will fall through to the bulk edit check, below.
+        if actions and request.method == 'POST' and (helpers.ACTION_CHECKBOX_NAME in request.POST or 'index' in request.POST):
             response = self.response_action(request, queryset=cl.get_query_set())
             if response:
                 return response
@@ -1183,7 +1181,7 @@ class InlineModelAdmin(BaseModelAdmin):
     fk_name = None
     formset = BaseInlineFormSet
     extra = 3
-    max_num = 0
+    max_num = None
     template = None
     verbose_name = None
     verbose_name_plural = None
@@ -1204,6 +1202,7 @@ class InlineModelAdmin(BaseModelAdmin):
         js = ['js/jquery.min.js', 'js/inlines.min.js']
         if self.prepopulated_fields:
             js.append('js/urlify.js')
+            js.append('js/prepopulate.js')
         if self.filter_vertical or self.filter_horizontal:
             js.extend(['js/SelectBox.js' , 'js/SelectFilter2.js'])
         return forms.Media(js=['%s%s' % (settings.ADMIN_MEDIA_PREFIX, url) for url in js])

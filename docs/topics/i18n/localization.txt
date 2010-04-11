@@ -249,8 +249,13 @@ Format localization
 
 .. versionadded:: 1.2
 
-Django's formatting system is disabled by default. To enable it, it's necessary
-to set :setting:`USE_L10N = True <USE_L10N>` in your settings file.
+Django's formatting system is disabled by default. To enable it, it's
+necessary to set :setting:`USE_L10N = True <USE_L10N>` in your settings file.
+
+.. note::
+    The default :file:`settings.py` file created by
+    :djadmin:`django-admin.py startproject <startproject>` includes
+    :setting:`USE_L10N = True <USE_L10N>` for convenience.
 
 When using Django's formatting system, dates and numbers on templates will be
 displayed using the format specified for the current locale. Two users
@@ -262,6 +267,13 @@ Django will also use localized formats when parsing data in forms. That means
 Django uses different formats for different locales when guessing the format
 used by the user when inputting data on forms. Note that Django uses different
 formats for displaying data, and for parsing it.
+
+To enable a form field to localize input and output data simply use its
+``localize`` argument::
+
+    class CashRegisterForm(forms.Form):
+       product = forms.CharField()
+       revenue = forms.DecimalField(max_digits=4, decimal_places=2, localize=True)
 
 Creating custom format files
 ----------------------------

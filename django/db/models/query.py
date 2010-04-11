@@ -3,6 +3,7 @@ The main QuerySet implementation. This provides the public API for the ORM.
 """
 
 from copy import deepcopy
+from itertools import izip
 
 from django.db import connections, router, transaction, IntegrityError
 from django.db.models.aggregates import Aggregate
@@ -428,12 +429,15 @@ class QuerySet(object):
         # Delete objects in chunks to prevent the list of related objects from
         # becoming too long.
         seen_objs = None
+        del_itr = iter(del_query)
         while 1:
-            # Collect all the objects to be deleted in this chunk, and all the
+            # Collect a chunk of objects to be deleted, and then all the
             # objects that are related to the objects that are to be deleted.
+            # The chunking *isn't* done by slicing the del_query because we
+            # need to maintain the query cache on del_query (see #12328)
             seen_objs = CollectedObjects(seen_objs)
-            for object in del_query[:CHUNK_SIZE]:
-                object._collect_sub_objects(seen_objs)
+            for i, obj in izip(xrange(CHUNK_SIZE), del_itr):
+                obj._collect_sub_objects(seen_objs)
 
             if not seen_objs:
                 break
@@ -1113,7 +1117,7 @@ class EmptyQuerySet(QuerySet):
 
 
 def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
-                   requested=None, offset=0, only_load=None):
+                   requested=None, offset=0, only_load=None, local_only=False):
     """
     Helper function that recursively returns an object with the specified
     related attributes already populated.
@@ -1141,6 +1145,8 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
      * only_load - if the query has had only() or defer() applied,
        this is the list of field names that will be returned. If None,
        the full field list for `klass` can be assumed.
+     * local_only - Only populate local fields. This is used when building
+       following reverse select-related relations
     """
     if max_depth and requested is None and cur_depth > max_depth:
         # We've recursed deeply enough; stop now.
@@ -1153,9 +1159,11 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
         skip = set()
         init_list = []
         # Build the list of fields that *haven't* been requested
-        for field in klass._meta.fields:
+        for field, model in klass._meta.get_fields_with_model():
             if field.name not in load_fields:
                 skip.add(field.name)
+            elif local_only and model is not None:
+                continue
             else:
                 init_list.append(field.attname)
         # Retrieve all the requested fields
@@ -1174,7 +1182,11 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
 
     else:
         # Load all fields on klass
-        field_count = len(klass._meta.fields)
+        if local_only:
+            field_names = [f.attname for f in klass._meta.local_fields]
+        else:
+            field_names = [f.attname for f in klass._meta.fields]
+        field_count = len(field_names)
         fields = row[index_start : index_start + field_count]
         # If all the select_related columns are None, then the related
         # object must be non-existent - set the relation to None.
@@ -1182,7 +1194,7 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
         if fields == (None,) * field_count:
             obj = None
         else:
-            obj = klass(*fields)
+            obj = klass(**dict(zip(field_names, fields)))
 
     # If an object was retrieved, set the database state.
     if obj:
@@ -1200,7 +1212,7 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
             next = None
         # Recursively retrieve the data for the related object
         cached_row = get_cached_row(f.rel.to, row, index_end, using,
-                max_depth, cur_depth+1, next)
+                max_depth, cur_depth+1, next, only_load=only_load)
         # If the recursive descent found an object, populate the
         # descriptor caches relevant to the object
         if cached_row:
@@ -1229,7 +1241,7 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
             next = requested[f.related_query_name()]
             # Recursively retrieve the data for the related object
             cached_row = get_cached_row(model, row, index_end, using,
-                max_depth, cur_depth+1, next)
+                max_depth, cur_depth+1, next, only_load=only_load, local_only=True)
             # If the recursive descent found an object, populate the
             # descriptor caches relevant to the object
             if cached_row:
@@ -1242,7 +1254,20 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
                     # If the related object exists, populate
                     # the descriptor cache.
                     setattr(rel_obj, f.get_cache_name(), obj)
-
+                    # Now populate all the non-local field values
+                    # on the related object
+                    for rel_field,rel_model in rel_obj._meta.get_fields_with_model():
+                        if rel_model is not None:
+                            setattr(rel_obj, rel_field.attname, getattr(obj, rel_field.attname))
+                            # populate the field cache for any related object
+                            # that has already been retrieved
+                            if rel_field.rel:
+                                try:
+                                    cached_obj = getattr(obj, rel_field.get_cache_name())
+                                    setattr(rel_obj, rel_field.get_cache_name(), cached_obj)
+                                except AttributeError:
+                                    # Related object hasn't been cached yet
+                                    pass
     return obj, index_end
 
 def delete_objects(seen_objs, using):
@@ -1278,8 +1303,6 @@ def delete_objects(seen_objs, using):
                     signals.pre_delete.send(sender=cls, instance=instance)
 
             pk_list = [pk for pk,instance in items]
-            del_query = sql.DeleteQuery(cls)
-            del_query.delete_batch_related(pk_list, using=using)
 
             update_query = sql.UpdateQuery(cls)
             for field, model in cls._meta.get_fields_with_model():
@@ -1388,12 +1411,19 @@ class RawQuerySet(object):
             self._model_fields = {}
             for field in self.model._meta.fields:
                 name, column = field.get_attname_column()
-                self._model_fields[converter(column)] = name
+                self._model_fields[converter(column)] = field
         return self._model_fields
 
     def transform_results(self, values):
         model_init_kwargs = {}
         annotations = ()
+
+        # Perform database backend type resolution
+        connection = connections[self.db]
+        compiler = connection.ops.compiler('SQLCompiler')(self.query, connection, self.db)
+        if hasattr(compiler, 'resolve_columns'):
+            fields = [self.model_fields.get(c,None) for c in self.columns]
+            values = compiler.resolve_columns(values, fields)
 
         # Associate fields to values
         for pos, value in enumerate(values):
@@ -1401,7 +1431,7 @@ class RawQuerySet(object):
 
             # Separate properties from annotations
             if column in self.model_fields.keys():
-                model_init_kwargs[self.model_fields[column]] = value
+                model_init_kwargs[self.model_fields[column].attname] = value
             else:
                 annotations += (column, value),
 

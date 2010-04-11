@@ -2,6 +2,7 @@ import datetime
 import decimal
 import re
 import time
+import math
 
 import django.utils.copycompat as copy
 
@@ -117,34 +118,6 @@ class Field(object):
             messages.update(getattr(c, 'default_error_messages', {}))
         messages.update(error_messages or {})
         self.error_messages = messages
-
-    def __getstate__(self):
-        """
-        Pickling support.
-        """
-        from django.utils.functional import Promise
-        obj_dict = self.__dict__.copy()
-        items = []
-        translated_keys = []
-        for k, v in self.error_messages.items():
-            if isinstance(v, Promise):
-                args = getattr(v, '_proxy____args', None)
-                if args:
-                    translated_keys.append(k)
-                    v = args[0]
-            items.append((k,v))
-        obj_dict['_translated_keys'] = translated_keys
-        obj_dict['error_messages'] = dict(items)
-        return obj_dict
-
-    def __setstate__(self, obj_dict):
-        """
-        Unpickling support.
-        """
-        translated_keys = obj_dict.pop('_translated_keys')
-        self.__dict__.update(obj_dict)
-        for k in translated_keys:
-            self.error_messages[k] = _(self.error_messages[k])
 
     def __cmp__(self, other):
         # This is needed because bisect does not take a comparison function.
@@ -578,7 +551,7 @@ class CharField(Field):
 
     def get_prep_value(self, value):
         return self.to_python(value)
-    
+
     def formfield(self, **kwargs):
         # Passing max_length to forms.CharField means that the value's length
         # will be validated twice. This is considered acceptable since we want
@@ -881,6 +854,12 @@ class IntegerField(Field):
         if value is None:
             return None
         return int(value)
+
+    def get_prep_lookup(self, lookup_type, value):
+        if (lookup_type == 'gte' or lookup_type == 'lt') \
+           and isinstance(value, float):
+                value = math.ceil(value)
+        return super(IntegerField, self).get_prep_lookup(lookup_type, value)
 
     def get_internal_type(self):
         return "IntegerField"

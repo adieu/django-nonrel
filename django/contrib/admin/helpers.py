@@ -7,6 +7,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.fields import FieldDoesNotExist
 from django.db.models.fields.related import ManyToManyRel
 from django.forms.util import flatatt
+from django.template.defaultfilters import capfirst
 from django.utils.encoding import force_unicode, smart_unicode
 from django.utils.html import escape, conditional_escape
 from django.utils.safestring import mark_safe
@@ -128,7 +129,19 @@ class AdminField(object):
 
 class AdminReadonlyField(object):
     def __init__(self, form, field, is_first, model_admin=None):
-        self.field = field
+        label = label_for_field(field, form._meta.model, model_admin)
+        # Make self.field look a little bit like a field. This means that
+        # {{ field.name }} must be a useful class name to identify the field.
+        # For convenience, store other field-related data here too.
+        if callable(field):
+            class_name = field.__name__ != '<lambda>' and field.__name__ or ''
+        else:
+            class_name = field
+        self.field = {
+            'name': class_name,
+            'label': label,
+            'field': field,
+        }
         self.form = form
         self.model_admin = model_admin
         self.is_first = is_first
@@ -139,10 +152,8 @@ class AdminReadonlyField(object):
         attrs = {}
         if not self.is_first:
             attrs["class"] = "inline"
-        name = forms.forms.pretty_name(
-            label_for_field(self.field, self.model_admin.model, self.model_admin)
-        )
-        contents = force_unicode(escape(name)) + u":"
+        label = self.field['label']
+        contents = capfirst(force_unicode(escape(label))) + u":"
         return mark_safe('<label%(attrs)s>%(contents)s</label>' % {
             "attrs": flatatt(attrs),
             "contents": contents,
@@ -151,10 +162,10 @@ class AdminReadonlyField(object):
     def contents(self):
         from django.contrib.admin.templatetags.admin_list import _boolean_icon
         from django.contrib.admin.views.main import EMPTY_CHANGELIST_VALUE
-        field, obj, model_admin = self.field, self.form.instance, self.model_admin
+        field, obj, model_admin = self.field['field'], self.form.instance, self.model_admin
         try:
             f, attr, value = lookup_field(field, obj, model_admin)
-        except (AttributeError, ObjectDoesNotExist):
+        except (AttributeError, ValueError, ObjectDoesNotExist):
             result_repr = EMPTY_CHANGELIST_VALUE
         else:
             if f is None:
@@ -207,7 +218,7 @@ class InlineAdminFormSet(object):
                 continue
             if field in self.readonly_fields:
                 label = label_for_field(field, self.opts.model, self.model_admin)
-                yield (False, forms.forms.pretty_name(label))
+                yield (False, label)
             else:
                 field = self.formset.form.base_fields[field]
                 yield (field.widget.is_hidden, field.label)
@@ -232,7 +243,7 @@ class InlineAdminForm(AdminForm):
             self.original_content_type_id = ContentType.objects.get_for_model(original).pk
         self.show_url = original and hasattr(original, 'get_absolute_url')
         super(InlineAdminForm, self).__init__(form, fieldsets, prepopulated_fields,
-            readonly_fields)
+            readonly_fields, model_admin)
 
     def __iter__(self):
         for name, options in self.fieldsets:
@@ -323,4 +334,3 @@ def normalize_dictionary(data_dict):
             del data_dict[key]
             data_dict[str(key)] = value
     return data_dict
-

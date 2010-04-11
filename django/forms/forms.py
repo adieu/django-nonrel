@@ -18,9 +18,10 @@ __all__ = ('BaseForm', 'Form')
 NON_FIELD_ERRORS = '__all__'
 
 def pretty_name(name):
-    "Converts 'first_name' to 'First name'"
-    name = name[0].upper() + name[1:]
-    return name.replace('_', ' ')
+    """Converts 'first_name' to 'First name'""" 
+    if not name: 
+        return u'' 
+    return name.replace('_', ' ').capitalize() 
 
 def get_declared_fields(bases, attrs, with_base_fields=True):
     """
@@ -442,6 +443,8 @@ class BoundField(StrAndUnicode):
             name = self.html_name
         else:
             name = self.html_initial_name
+        if self.field.localize:
+            data = self.field.localize_value(data)
         return widget.render(name, data, attrs=attrs)
 
     def as_text(self, attrs=None, **kwargs):
