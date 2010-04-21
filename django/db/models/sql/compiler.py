@@ -14,6 +14,8 @@ class SQLCompiler(object):
         self.using = using
         self.quote_cache = {}
 
+        self.query.get_meta().check_supported(connection)
+
     def pre_sql_setup(self):
         """
         Does any necessary class setup immediately prior to producing SQL. This
@@ -699,6 +701,12 @@ class SQLCompiler(object):
                     ]) + tuple(row[aggregate_end:])
 
                 yield row
+
+    def has_results(self):
+        # This is always executed on a query clone, so we can modify self.query
+        self.query.add_extra({'a': 1}, None, None, None, None, None)
+        self.query.set_extra_mask(('a',))
+        return bool(self.execute_sql(SINGLE))
 
     def execute_sql(self, result_type=MULTI):
         """
