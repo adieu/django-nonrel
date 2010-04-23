@@ -41,7 +41,6 @@ class ModelBase(type):
         else:
             meta = attr_meta
         base_meta = getattr(new_class, '_meta', None)
-        has_concrete_parent = False
 
         if getattr(meta, 'app_label', None) is None:
             # Figure out the app_label by looking one level up.
@@ -132,9 +131,6 @@ class ModelBase(type):
                 # uninteresting parents.
                 continue
 
-            if base._meta.has_concrete_parent:
-                has_concrete_parent = True
-
             parent_fields = base._meta.local_fields + base._meta.local_many_to_many
             # Check for clashes between locally declared fields and those
             # on the base classes (we cannot handle shadowed fields at the
@@ -148,8 +144,6 @@ class ModelBase(type):
 
             if not base._meta.abstract:
                 # Concrete classes...
-
-                has_concrete_parent = True
 
                 while base._meta.proxy:
                     # Skip over a proxy class to the "real" base it proxies.
@@ -189,10 +183,6 @@ class ModelBase(type):
                                      'abstract base class %r' % \
                                         (field.name, name, base.__name__))
                 new_class.add_to_class(field.name, copy.deepcopy(field))
-
-        # TODO/NONREL: Emulate multi-table inheritance with PolyModel
-        # principle from GAE
-        new_class._meta.has_concrete_parent = has_concrete_parent
 
         if abstract:
             # Abstract base models can't be instantiated and don't appear in
@@ -460,7 +450,6 @@ class Model(object):
         connection = connections[using]
         assert not (force_insert and force_update)
         if cls is None:
-            self._meta.check_supported(connection)
             cls = self.__class__
             meta = cls._meta
             if not meta.proxy:

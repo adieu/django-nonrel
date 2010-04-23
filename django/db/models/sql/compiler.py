@@ -14,8 +14,6 @@ class SQLCompiler(object):
         self.using = using
         self.quote_cache = {}
 
-        self.query.get_meta().check_supported(connection)
-
     def pre_sql_setup(self):
         """
         Does any necessary class setup immediately prior to producing SQL. This
