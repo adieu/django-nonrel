@@ -41,6 +41,7 @@ class ModelBase(type):
         else:
             meta = attr_meta
         base_meta = getattr(new_class, '_meta', None)
+        has_concrete_parent = False
 
         if getattr(meta, 'app_label', None) is None:
             # Figure out the app_label by looking one level up.
@@ -131,6 +132,9 @@ class ModelBase(type):
                 # uninteresting parents.
                 continue
 
+            if base._meta.has_concrete_parent:
+                has_concrete_parent = True
+
             parent_fields = base._meta.local_fields + base._meta.local_many_to_many
             # Check for clashes between locally declared fields and those
             # on the base classes (we cannot handle shadowed fields at the
@@ -141,8 +145,12 @@ class ModelBase(type):
                                      'with field of similar name from '
                                      'base class %r' %
                                         (field.name, name, base.__name__))
+
             if not base._meta.abstract:
                 # Concrete classes...
+
+                has_concrete_parent = True
+
                 while base._meta.proxy:
                     # Skip over a proxy class to the "real" base it proxies.
                     base = base._meta.proxy_for_model
@@ -181,6 +189,10 @@ class ModelBase(type):
                                      'abstract base class %r' % \
                                         (field.name, name, base.__name__))
                 new_class.add_to_class(field.name, copy.deepcopy(field))
+
+        # TODO/NONREL: Emulate multi-table inheritance with PolyModel
+        # principle from GAE
+        new_class._meta.has_concrete_parent = has_concrete_parent
 
         if abstract:
             # Abstract base models can't be instantiated and don't appear in
@@ -448,6 +460,7 @@ class Model(object):
         connection = connections[using]
         assert not (force_insert and force_update)
         if cls is None:
+            self._meta.check_supported(connection)
             cls = self.__class__
             meta = cls._meta
             if not meta.proxy:
@@ -491,7 +504,19 @@ class Model(object):
             pk_set = pk_val is not None
             record_exists = True
             manager = cls._base_manager
-            if pk_set:
+            # TODO/NONREL: Some backends could emulate force_insert/_update
+            # with an optimistic transaction, but since it's costly we should
+            # only do it when the user explicitly wants it.
+            # By adding support for an optimistic locking transaction
+            # in Django (SQL: SELECT ... FOR UPDATE) we could even make that
+            # part fully reusable on all backends (the current .exists()
+            # check below isn't really safe if you have lots of concurrent
+            # requests. BTW, and neither is QuerySet.get_or_create).
+            try_update = connection.features.distinguishes_insert_from_update
+            if not try_update:
+                record_exists = False
+
+            if try_update and pk_set:
                 # Determine whether a record with the primary key already exists.
                 if (force_update or (not force_insert and
                         manager.using(using).filter(pk=pk_val).exists())):
@@ -556,6 +581,12 @@ class Model(object):
         pk_val = self._get_pk_val()
         if seen_objs.add(self.__class__, pk_val, self,
                          type(parent), parent, nullable):
+            return
+
+        using = router.db_for_write(self.__class__, instance=self)
+        connection = connections[using]
+        if not connection.features.supports_deleting_related_objects:
+            # TODO/NONREL: support deleting related objects in background task
             return
 
         for related in self._meta.get_all_related_objects():

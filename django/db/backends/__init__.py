@@ -96,6 +96,9 @@ class BaseDatabaseFeatures(object):
     # integer primary keys.
     related_fields_match_type = False
     allow_sliced_subqueries = True
+    distinguishes_insert_from_update = True
+    supports_deleting_related_objects = True
+    supports_multi_table_inheritance = True
 
 class BaseDatabaseOperations(object):
     """
