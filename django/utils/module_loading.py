@@ -5,7 +5,7 @@ def module_has_submodule(mod, submod_name):
     # If the module was loaded from an egg, __loader__ will be set and
     # its find_module must be used to search for submodules.
     loader = getattr(mod, '__loader__', None)
-    if loader and hasattr(loader, 'prefix'):
+    if loader:
         mod_path = "%s.%s" % (mod.__name__.rsplit('.',1)[-1], submod_name)
         x = loader.find_module(mod_path)
         if x is None:
