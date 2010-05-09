@@ -471,9 +471,13 @@ class AutoField(Field):
         pass
 
     def get_prep_value(self, value):
-        if value is None:
-            return None
-        return int(value)
+        return value
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        # Casts dates into the format expected by the backend
+        if not prepared:
+            value = self.get_prep_value(value)
+        return connection.ops.value_to_db_auto(value)
 
     def contribute_to_class(self, cls, name):
         assert not cls._meta.has_auto_field, "A model can't have more than one AutoField."
