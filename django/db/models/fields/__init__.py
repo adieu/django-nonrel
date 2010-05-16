@@ -221,6 +221,10 @@ class Field(object):
         except KeyError:
             return None
 
+    def related_db_type(self, connection):
+        # This is the db_type used by a ForeignKey.
+        return self.db_type(connection=connection)
+
     def unique(self):
         return self._unique or self.primary_key
     unique = property(unique)
@@ -448,24 +452,28 @@ class Field(object):
         return getattr(obj, self.attname)
 
 class AutoField(Field):
-    description = _("Integer")
+    description = _("Integer or string")
 
     empty_strings_allowed = False
     default_error_messages = {
-        'invalid': _(u'This value must be an integer.'),
+        'invalid': _(u'This value must be an integer or string.'),
     }
     def __init__(self, *args, **kwargs):
         assert kwargs.get('primary_key', False) is True, "%ss must have primary_key=True." % self.__class__.__name__
         kwargs['blank'] = True
         Field.__init__(self, *args, **kwargs)
 
-    def to_python(self, value):
-        if value is None:
-            return value
+    def related_db_type(self, connection):
+        data = DictWrapper(self.__dict__, connection.ops.quote_name, "qn_")
         try:
-            return int(value)
-        except (TypeError, ValueError):
+            return connection.creation.data_types['RelatedAutoField'] % data
+        except KeyError:
+            return IntegerField().db_type(connection=connection)
+
+    def to_python(self, value):
+        if not (value is None or isinstance(value, (basestring, int, long))):
             raise exceptions.ValidationError(self.error_messages['invalid'])
+        return value
 
     def validate(self, value, model_instance):
         pass
@@ -474,7 +482,7 @@ class AutoField(Field):
         return value
 
     def get_db_prep_value(self, value, connection, prepared=False):
-        # Casts dates into the format expected by the backend
+        # Casts AutoField into the format expected by the backend
         if not prepared:
             value = self.get_prep_value(value)
         return connection.ops.value_to_db_auto(value)
@@ -964,6 +972,12 @@ class NullBooleanField(Field):
 class PositiveIntegerField(IntegerField):
     description = _("Integer")
 
+    def related_db_type(self, connection):
+        if not connection.features.related_fields_match_type:
+            return IntegerField().db_type(connection=connection)
+        return super(PositiveIntegerField, self).related_db_type(
+            connection=connection)
+
     def get_internal_type(self):
         return "PositiveIntegerField"
 
@@ -974,6 +988,12 @@ class PositiveIntegerField(IntegerField):
 
 class PositiveSmallIntegerField(IntegerField):
     description = _("Integer")
+    def related_db_type(self, connection):
+        if not connection.features.related_fields_match_type:
+            return IntegerField().db_type(connection=connection)
+        return super(PositiveSmallIntegerField, self).related_db_type(
+            connection=connection)
+
     def get_internal_type(self):
         return "PositiveSmallIntegerField"
 
