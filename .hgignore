@@ -8,3 +8,4 @@ syntax: glob
 desktop.ini
 nbproject
 docs/_build/*
+tests/django

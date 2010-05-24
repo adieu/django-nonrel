@@ -452,11 +452,11 @@ class Field(object):
         return getattr(obj, self.attname)
 
 class AutoField(Field):
-    description = _("Integer or string")
+    description = _("Integer")
 
     empty_strings_allowed = False
     default_error_messages = {
-        'invalid': _(u'This value must be an integer or string.'),
+        'invalid': _(u'This value must be an integer.'),
     }
     def __init__(self, *args, **kwargs):
         assert kwargs.get('primary_key', False) is True, "%ss must have primary_key=True." % self.__class__.__name__
