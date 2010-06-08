@@ -141,10 +141,8 @@ class ModelBase(type):
                                      'with field of similar name from '
                                      'base class %r' %
                                         (field.name, name, base.__name__))
-
             if not base._meta.abstract:
                 # Concrete classes...
-
                 while base._meta.proxy:
                     # Skip over a proxy class to the "real" base it proxies.
                     base = base._meta.proxy_for_model
