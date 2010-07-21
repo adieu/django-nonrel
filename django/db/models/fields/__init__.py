@@ -630,7 +630,8 @@ class DateField(Field):
             raise exceptions.ValidationError(msg)
 
     def pre_save(self, model_instance, add):
-        if self.auto_now or (self.auto_now_add and add):
+        old_value = getattr(model_instance, self.attname)
+        if self.auto_now or (not old_value and self.auto_now_add and add):
             value = datetime.datetime.now()
             setattr(model_instance, self.attname, value)
             return value
@@ -1092,7 +1093,8 @@ class TimeField(Field):
                 raise exceptions.ValidationError(self.error_messages['invalid'])
 
     def pre_save(self, model_instance, add):
-        if self.auto_now or (self.auto_now_add and add):
+        old_value = getattr(model_instance, self.attname)
+        if self.auto_now or (not old_value and self.auto_now_add and add):
             value = datetime.datetime.now().time()
             setattr(model_instance, self.attname, value)
             return value
