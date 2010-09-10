@@ -9,6 +9,7 @@ from django.template import TemplateSyntaxError, VariableDoesNotExist, BLOCK_TAG
 from django.template import get_library, Library, InvalidTemplateLibrary
 from django.template.smartif import IfParser, Literal
 from django.conf import settings
+from django.utils.html import escape
 from django.utils.encoding import smart_str, smart_unicode
 from django.utils.safestring import mark_safe
 
@@ -42,7 +43,7 @@ class CsrfTokenNode(Node):
             if csrf_token == 'NOTPROVIDED':
                 return mark_safe(u"")
             else:
-                return mark_safe(u"<div style='display:none'><input type='hidden' name='csrfmiddlewaretoken' value='%s' /></div>" % (csrf_token))
+                return mark_safe(u"<div style='display:none'><input type='hidden' name='csrfmiddlewaretoken' value='%s' /></div>" % escape(csrf_token))
         else:
             # It's very probable that the token is missing because of
             # misconfiguration, so we raise a warning
@@ -157,15 +158,22 @@ class ForNode(Node):
             loop_dict['first'] = (i == 0)
             loop_dict['last'] = (i == len_values - 1)
 
+            pop_context = False
             if unpack:
                 # If there are multiple loop variables, unpack the item into
                 # them.
-                context.update(dict(zip(self.loopvars, item)))
+                try:
+                    unpacked_vars = dict(zip(self.loopvars, item))
+                except TypeError:
+                    pass
+                else:
+                    pop_context = True
+                    context.update(unpacked_vars)
             else:
                 context[self.loopvars[0]] = item
             for node in self.nodelist_loop:
                 nodelist.append(node.render(context))
-            if unpack:
+            if pop_context:
                 # The loop variables were pushed on to the context so pop them
                 # off again. This is necessary because the tag lets the length
                 # of loopvars differ to the length of each set of items and we

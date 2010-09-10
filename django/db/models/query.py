@@ -1311,7 +1311,8 @@ def delete_objects(seen_objs, using):
             # Pre-notify all instances to be deleted.
             for pk_val, instance in items:
                 if not cls._meta.auto_created:
-                    signals.pre_delete.send(sender=cls, instance=instance)
+                    signals.pre_delete.send(sender=cls, instance=instance,
+                        using=using)
 
             if not connection.features.supports_deleting_related_objects:
                 continue
@@ -1346,7 +1347,7 @@ def delete_objects(seen_objs, using):
                         setattr(instance, field.attname, None)
 
                 if not cls._meta.auto_created:
-                    signals.post_delete.send(sender=cls, instance=instance)
+                    signals.post_delete.send(sender=cls, instance=instance, using=using)
                 setattr(instance, cls._meta.pk.attname, None)
 
         if forced_managed:

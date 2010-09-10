@@ -463,8 +463,12 @@ class AutoField(Field):
         kwargs['blank'] = True
         Field.__init__(self, *args, **kwargs)
 
+    def get_internal_type(self):
+        return "AutoField"
+
     def related_db_type(self, connection):
         data = DictWrapper(self.__dict__, connection.ops.quote_name, "qn_")
+
         try:
             return connection.creation.data_types['RelatedAutoField'] % data
         except KeyError:
@@ -808,6 +812,14 @@ class EmailField(CharField):
         kwargs['max_length'] = kwargs.get('max_length', 75)
         CharField.__init__(self, *args, **kwargs)
 
+    def formfield(self, **kwargs):
+        # As with CharField, this will cause email validation to be performed twice
+        defaults = {
+            'form_class': forms.EmailField,
+        }
+        defaults.update(kwargs)
+        return super(EmailField, self).formfield(**defaults)
+
 class FilePathField(Field):
     description = _("File path")
 
@@ -1130,6 +1142,14 @@ class URLField(CharField):
         kwargs['max_length'] = kwargs.get('max_length', 200)
         CharField.__init__(self, verbose_name, name, **kwargs)
         self.validators.append(validators.URLValidator(verify_exists=verify_exists))
+
+    def formfield(self, **kwargs):
+        # As with CharField, this will cause URL validation to be performed twice
+        defaults = {
+            'form_class': forms.URLField,
+        }
+        defaults.update(kwargs)
+        return super(URLField, self).formfield(**defaults)
 
 class XMLField(TextField):
     description = _("XML text")
