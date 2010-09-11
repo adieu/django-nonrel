@@ -5,6 +5,7 @@ from django import forms
 from django.forms.models import modelform_factory, ModelChoiceField
 from django.conf import settings
 from django.test import TestCase
+from django.core.exceptions import FieldError
 
 from models import Person, RealPerson, Triple, FilePathModel, Article, \
     Publication, CustomFF, Author, Author1, Homepage
@@ -250,3 +251,85 @@ class URLFieldTests(TestCase):
         form.is_valid()
         # self.assertTrue(form.is_valid())
         # self.assertEquals(form.cleaned_data['url'], 'http://example.com/test')
+
+
+class FormFieldCallbackTests(TestCase):
+
+    def test_baseform_with_widgets_in_meta(self):
+        """Regression for #13095: Using base forms with widgets defined in Meta should not raise errors."""
+        widget = forms.Textarea()
+
+        class BaseForm(forms.ModelForm):
+            class Meta:
+                model = Person
+                widgets = {'name': widget}
+
+        Form = modelform_factory(Person, form=BaseForm)
+        self.assertTrue(Form.base_fields['name'].widget is widget)
+
+    def test_custom_callback(self):
+        """Test that a custom formfield_callback is used if provided"""
+
+        callback_args = []
+
+        def callback(db_field, **kwargs):
+            callback_args.append((db_field, kwargs))
+            return db_field.formfield(**kwargs)
+
+        widget = forms.Textarea()
+
+        class BaseForm(forms.ModelForm):
+            class Meta:
+                model = Person
+                widgets = {'name': widget}
+
+        _ = modelform_factory(Person, form=BaseForm,
+                              formfield_callback=callback)
+        id_field, name_field = Person._meta.fields
+
+        self.assertEqual(callback_args,
+                         [(id_field, {}), (name_field, {'widget': widget})])
+
+    def test_bad_callback(self):
+        # A bad callback provided by user still gives an error
+        self.assertRaises(TypeError, modelform_factory, Person,
+                          formfield_callback='not a function or callable')
+
+
+class InvalidFieldAndFactory(TestCase):
+    """ Tests for #11905 """
+
+    def test_extra_field_model_form(self):
+        try:
+            class ExtraPersonForm(forms.ModelForm):
+                """ ModelForm with an extra field """
+
+                age = forms.IntegerField()
+
+                class Meta:
+                    model = Person
+                    fields = ('name', 'no-field')
+        except FieldError, e:
+            # Make sure the exception contains some reference to the 
+            # field responsible for the problem.
+            self.assertTrue('no-field' in e.args[0])
+        else:
+            self.fail('Invalid "no-field" field not caught')
+
+    def test_extra_declared_field_model_form(self):
+        try:
+            class ExtraPersonForm(forms.ModelForm):
+                """ ModelForm with an extra field """
+
+                age = forms.IntegerField()
+
+                class Meta:
+                    model = Person
+                    fields = ('name', 'age')
+        except FieldError:
+            self.fail('Declarative field raised FieldError incorrectly')
+
+    def test_extra_field_modelform_factory(self):
+        self.assertRaises(FieldError, modelform_factory,
+                          Person, fields=['no-field', 'name'])
+
