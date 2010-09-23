@@ -265,6 +265,10 @@ def get_filter_tests():
         'filter-iriencode03': ('{{ url|iriencode }}', {'url': mark_safe('?test=1&me=2')}, '?test=1&me=2'),
         'filter-iriencode04': ('{% autoescape off %}{{ url|iriencode }}{% endautoescape %}', {'url': mark_safe('?test=1&me=2')}, '?test=1&me=2'),
 
+        # urlencode
+        'filter-urlencode01': ('{{ url|urlencode }}', {'url': '/test&"/me?/'}, '/test%26%22/me%3F/'),
+        'filter-urlencode02': ('/test/{{ urlbit|urlencode:"" }}/', {'urlbit': 'escape/slash'}, '/test/escape%2Fslash/'),
+
         # Chaining a bunch of safeness-preserving filters should not alter
         # the safe status either way.
         'chaining01': ('{{ a|capfirst|center:"7" }}.{{ b|capfirst|center:"7" }}', {"a": "a < b", "b": mark_safe("a < b")}, " A &lt; b . A < b "),
@@ -346,5 +350,5 @@ def get_filter_tests():
          'add04': (r'{{ i|add:"16" }}', {'i': 'not_an_int'}, 'not_an_int16'),
          'add05': (r'{{ l1|add:l2 }}', {'l1': [1, 2], 'l2': [3, 4]}, '[1, 2, 3, 4]'),
          'add06': (r'{{ t1|add:t2 }}', {'t1': (3, 4), 't2': (1, 2)}, '(3, 4, 1, 2)'),
-         'add07': (r'{{ d|add:t }}', {'d': date(2000, 1, 1), 't': timedelta(10)}, '2000-01-11'),
+         'add07': (r'{{ d|add:t }}', {'d': date(2000, 1, 1), 't': timedelta(10)}, 'Jan. 11, 2000'),
     }
