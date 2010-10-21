@@ -9,7 +9,7 @@ material presented in the :doc:`model </topics/db/models>` and :doc:`database
 query </topics/db/queries>` guides, so you'll probably want to read and
 understand those documents before reading this one.
 
-Throughout this reference we'll use the :ref:`example weblog models
+Throughout this reference we'll use the :ref:`example Weblog models
 <queryset-model-example>` presented in the :doc:`database query guide
 </topics/db/queries>`.
 
@@ -70,7 +70,7 @@ Example::
     try:
         article.full_clean()
     except ValidationError, e:
-        # Do something based on the errors contained in e.error_dict.
+        # Do something based on the errors contained in e.message_dict.
         # Display them to a user, or handle them programatically.
 
 The first step ``full_clean()`` performs is to clean each individual field.

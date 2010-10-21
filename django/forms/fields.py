@@ -27,8 +27,9 @@ from django.core.validators import EMPTY_VALUES
 
 from util import ErrorList
 from widgets import TextInput, PasswordInput, HiddenInput, MultipleHiddenInput, \
-        FileInput, CheckboxInput, Select, NullBooleanSelect, SelectMultiple, \
-        DateInput, DateTimeInput, TimeInput, SplitDateTimeWidget, SplitHiddenDateTimeWidget
+        ClearableFileInput, CheckboxInput, Select, NullBooleanSelect, SelectMultiple, \
+        DateInput, DateTimeInput, TimeInput, SplitDateTimeWidget, SplitHiddenDateTimeWidget, \
+        FILE_INPUT_CONTRADICTION
 
 __all__ = (
     'Field', 'CharField', 'IntegerField',
@@ -49,7 +50,7 @@ def en_format(name):
     from django.conf.locale.en import formats
     warnings.warn(
         "`django.forms.fields.DEFAULT_%s` is deprecated; use `django.utils.formats.get_format('%s')` instead." % (name, name),
-        PendingDeprecationWarning
+        DeprecationWarning
     )
     return getattr(formats, name)
 
@@ -107,6 +108,9 @@ class Field(object):
         self.localize = localize
         if self.localize:
             widget.is_localized = True
+
+        # Let the widget know whether it should display as required.
+        widget.is_required = self.required
 
         # Hook into self.widget_attrs() for any Field-specific HTML attributes.
         extra_attrs = self.widget_attrs(widget)
@@ -166,6 +170,17 @@ class Field(object):
         self.validate(value)
         self.run_validators(value)
         return value
+
+    def bound_data(self, data, initial):
+        """
+        Return the value that should be shown for this field on render of a
+        bound form, given the submitted POST data for the field and the initial
+        data, if any.
+
+        For most fields, this will simply be data; FileFields need to handle it
+        a bit differently.
+        """
+        return data
 
     def widget_attrs(self, widget):
         """
@@ -433,13 +448,18 @@ class EmailField(CharField):
     }
     default_validators = [validators.validate_email]
 
+    def clean(self, value):
+        value = self.to_python(value).strip()
+        return super(EmailField, self).clean(value)
+
 class FileField(Field):
-    widget = FileInput
+    widget = ClearableFileInput
     default_error_messages = {
         'invalid': _(u"No file was submitted. Check the encoding type on the form."),
         'missing': _(u"No file was submitted."),
         'empty': _(u"The submitted file is empty."),
         'max_length': _(u'Ensure this filename has at most %(max)d characters (it has %(length)d).'),
+        'contradiction': _(u'Please either submit a file or check the clear checkbox, not both.')
     }
 
     def __init__(self, *args, **kwargs):
@@ -468,9 +488,28 @@ class FileField(Field):
         return data
 
     def clean(self, data, initial=None):
+        # If the widget got contradictory inputs, we raise a validation error
+        if data is FILE_INPUT_CONTRADICTION:
+            raise ValidationError(self.error_messages['contradiction'])
+        # False means the field value should be cleared; further validation is
+        # not needed.
+        if data is False:
+            if not self.required:
+                return False
+            # If the field is required, clearing is not possible (the widget
+            # shouldn't return False data in that case anyway). False is not
+            # in validators.EMPTY_VALUES; if a False value makes it this far
+            # it should be validated from here on out as None (so it will be
+            # caught by the required check).
+            data = None
         if not data and initial:
             return initial
         return super(FileField, self).clean(data)
+
+    def bound_data(self, data, initial):
+        if data in (None, FILE_INPUT_CONTRADICTION):
+            return initial
+        return data
 
 class ImageField(FileField):
     default_error_messages = {

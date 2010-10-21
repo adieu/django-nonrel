@@ -13,12 +13,16 @@ from django.conf import settings
 from django.core.urlresolvers import get_callable
 from django.utils.cache import patch_vary_headers
 from django.utils.hashcompat import md5_constructor
+from django.utils.log import getLogger
 from django.utils.safestring import mark_safe
+from django.utils.crypto import constant_time_compare
 
 _POST_FORM_RE = \
     re.compile(r'(<form\W[^>]*\bmethod\s*=\s*(\'|"|)POST(\'|"|)\b[^>]*>)', re.IGNORECASE)
 
 _HTML_TYPES = ('text/html', 'application/xhtml+xml')
+
+logger = getLogger('django.request')
 
 # Use the system (hardware-based) random number generator if it exists.
 if hasattr(random, 'SystemRandom'):
@@ -169,14 +173,26 @@ class CsrfViewMiddleware(object):
                 # we can use strict Referer checking.
                 referer = request.META.get('HTTP_REFERER')
                 if referer is None:
+                    logger.warning('Forbidden (%s): %s' % (REASON_NO_COOKIE, request.path),
+                        extra={
+                            'status_code': 403,
+                            'request': request,
+                        }
+                    )
                     return reject(REASON_NO_REFERER)
 
                 # The following check ensures that the referer is HTTPS,
                 # the domains match and the ports match - the same origin policy.
                 good_referer = 'https://%s/' % request.get_host()
                 if not referer.startswith(good_referer):
-                    return reject(REASON_BAD_REFERER %
-                                  (referer, good_referer))
+                    reason = REASON_BAD_REFERER % (referer, good_referer)
+                    logger.warning('Forbidden (%s): %s' % (reason, request.path),
+                        extra={
+                            'status_code': 403,
+                            'request': request,
+                        }
+                    )
+                    return reject(reason)
 
             # If the user didn't already have a CSRF cookie, then fall back to
             # the Django 1.1 method (hash of session ID), so a request is not
@@ -190,17 +206,35 @@ class CsrfViewMiddleware(object):
                     # No CSRF cookie and no session cookie. For POST requests,
                     # we insist on a CSRF cookie, and in this way we can avoid
                     # all CSRF attacks, including login CSRF.
+                    logger.warning('Forbidden (%s): %s' % (REASON_NO_COOKIE, request.path),
+                        extra={
+                            'status_code': 403,
+                            'request': request,
+                        }
+                    )
                     return reject(REASON_NO_COOKIE)
             else:
                 csrf_token = request.META["CSRF_COOKIE"]
 
             # check incoming token
-            request_csrf_token = request.POST.get('csrfmiddlewaretoken', None)
-            if request_csrf_token != csrf_token:
+            request_csrf_token = request.POST.get('csrfmiddlewaretoken', '')
+            if not constant_time_compare(request_csrf_token, csrf_token):
                 if cookie_is_new:
                     # probably a problem setting the CSRF cookie
+                    logger.warning('Forbidden (%s): %s' % (REASON_NO_CSRF_COOKIE, request.path),
+                        extra={
+                            'status_code': 403,
+                            'request': request,
+                        }
+                    )
                     return reject(REASON_NO_CSRF_COOKIE)
                 else:
+                    logger.warning('Forbidden (%s): %s' % (REASON_BAD_TOKEN, request.path),
+                        extra={
+                            'status_code': 403,
+                            'request': request,
+                        }
+                    )
                     return reject(REASON_BAD_TOKEN)
 
         return accept()
@@ -241,7 +275,7 @@ class CsrfResponseMiddleware(object):
         import warnings
         warnings.warn(
             "CsrfResponseMiddleware and CsrfMiddleware are deprecated; use CsrfViewMiddleware and the template tag instead (see CSRF documentation).",
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
     def process_response(self, request, response):

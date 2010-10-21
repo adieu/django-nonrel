@@ -12,12 +12,14 @@ from django.contrib.admin.sites import LOGIN_FORM_KEY
 from django.contrib.admin.util import quote
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.forms.util import ErrorList
+import django.template.context
 from django.test import TestCase
 from django.utils import formats
 from django.utils.cache import get_max_age
 from django.utils.encoding import iri_to_uri
 from django.utils.html import escape
 from django.utils.translation import get_date_formats, activate, deactivate
+from django.utils import unittest
 
 # local test models
 from models import Article, BarAccount, CustomArticle, EmptyModel, \
@@ -2209,48 +2211,78 @@ class UserAdminTest(TestCase):
         self.assertNotEquals(new_user.password, UNUSABLE_PASSWORD)
 
 try:
-    # If docutils isn't installed, skip the AdminDocs tests.
     import docutils
-
-    class AdminDocsTest(TestCase):
-        fixtures = ['admin-views-users.xml']
-
-        def setUp(self):
-            self.client.login(username='super', password='secret')
-
-        def tearDown(self):
-            self.client.logout()
-
-        def test_tags(self):
-            response = self.client.get('/test_admin/admin/doc/tags/')
-
-            # The builtin tag group exists
-            self.assertContains(response, "<h2>Built-in tags</h2>", count=2)
-
-            # A builtin tag exists in both the index and detail
-            self.assertContains(response, '<h3 id="built_in-autoescape">autoescape</h3>')
-            self.assertContains(response, '<li><a href="#built_in-autoescape">autoescape</a></li>')
-
-            # An app tag exists in both the index and detail
-            self.assertContains(response, '<h3 id="flatpages-get_flatpages">get_flatpages</h3>')
-            self.assertContains(response, '<li><a href="#flatpages-get_flatpages">get_flatpages</a></li>')
-
-            # The admin list tag group exists
-            self.assertContains(response, "<h2>admin_list</h2>", count=2)
-
-            # An admin list tag exists in both the index and detail
-            self.assertContains(response, '<h3 id="admin_list-admin_actions">admin_actions</h3>')
-            self.assertContains(response, '<li><a href="#admin_list-admin_actions">admin_actions</a></li>')
-
-        def test_filters(self):
-            response = self.client.get('/test_admin/admin/doc/filters/')
-
-            # The builtin filter group exists
-            self.assertContains(response, "<h2>Built-in filters</h2>", count=2)
-
-            # A builtin filter exists in both the index and detail
-            self.assertContains(response, '<h3 id="built_in-add">add</h3>')
-            self.assertContains(response, '<li><a href="#built_in-add">add</a></li>')
-
 except ImportError:
-    pass
+    docutils = None
+
+#@unittest.skipUnless(docutils, "no docutils installed.")
+class AdminDocsTest(TestCase):
+    fixtures = ['admin-views-users.xml']
+
+    def setUp(self):
+        self.client.login(username='super', password='secret')
+
+    def tearDown(self):
+        self.client.logout()
+
+    def test_tags(self):
+        response = self.client.get('/test_admin/admin/doc/tags/')
+
+        # The builtin tag group exists
+        self.assertContains(response, "<h2>Built-in tags</h2>", count=2)
+
+        # A builtin tag exists in both the index and detail
+        self.assertContains(response, '<h3 id="built_in-autoescape">autoescape</h3>')
+        self.assertContains(response, '<li><a href="#built_in-autoescape">autoescape</a></li>')
+
+        # An app tag exists in both the index and detail
+        self.assertContains(response, '<h3 id="flatpages-get_flatpages">get_flatpages</h3>')
+        self.assertContains(response, '<li><a href="#flatpages-get_flatpages">get_flatpages</a></li>')
+
+        # The admin list tag group exists
+        self.assertContains(response, "<h2>admin_list</h2>", count=2)
+
+        # An admin list tag exists in both the index and detail
+        self.assertContains(response, '<h3 id="admin_list-admin_actions">admin_actions</h3>')
+        self.assertContains(response, '<li><a href="#admin_list-admin_actions">admin_actions</a></li>')
+
+    def test_filters(self):
+        response = self.client.get('/test_admin/admin/doc/filters/')
+
+        # The builtin filter group exists
+        self.assertContains(response, "<h2>Built-in filters</h2>", count=2)
+
+        # A builtin filter exists in both the index and detail
+        self.assertContains(response, '<h3 id="built_in-add">add</h3>')
+        self.assertContains(response, '<li><a href="#built_in-add">add</a></li>')
+
+AdminDocsTest = unittest.skipUnless(docutils, "no docutils installed.")(AdminDocsTest)
+
+class ValidXHTMLTests(TestCase):
+    fixtures = ['admin-views-users.xml']
+    urlbit = 'admin'
+
+    def setUp(self):
+        self._context_processors = None
+        self._use_i18n, settings.USE_I18N = settings.USE_I18N, False
+        if 'django.core.context_processors.i18n' in settings.TEMPLATE_CONTEXT_PROCESSORS:
+            self._context_processors = settings.TEMPLATE_CONTEXT_PROCESSORS
+            cp = list(settings.TEMPLATE_CONTEXT_PROCESSORS)
+            cp.remove('django.core.context_processors.i18n')
+            settings.TEMPLATE_CONTEXT_PROCESSORS = tuple(cp)
+            # Force re-evaluation of the contex processor list
+            django.template.context._standard_context_processors = None
+        self.client.login(username='super', password='secret')
+
+    def tearDown(self):
+        self.client.logout()
+        if self._context_processors is not None:
+            settings.TEMPLATE_CONTEXT_PROCESSORS = self._context_processors
+            # Force re-evaluation of the contex processor list
+            django.template.context._standard_context_processors = None
+        settings.USE_I18N = self._use_i18n
+
+    def testLangNamePresent(self):
+        response = self.client.get('/test_admin/%s/admin_views/' % self.urlbit)
+        self.failIf(' lang=""' in response.content)
+        self.failIf(' xml:lang=""' in response.content)

@@ -80,9 +80,13 @@ class DjangoTranslation(gettext_module.GNUTranslations):
 
     def set_language(self, language):
         self.__language = language
+        self.__to_language = to_language(language)
 
     def language(self):
         return self.__language
+
+    def to_language(self):
+        return self.__to_language
 
     def __repr__(self):
         return "<DjangoTranslation lang:%s>" % self.__language
@@ -188,7 +192,7 @@ def activate(language):
         warnings.warn(
             "The use of the language code 'no' is deprecated. "
             "Please use the 'nb' translation instead.",
-            PendingDeprecationWarning
+            DeprecationWarning
         )
     _active[currentThread()] = translation(language)
 
@@ -214,7 +218,7 @@ def get_language():
     t = _active.get(currentThread(), None)
     if t is not None:
         try:
-            return to_language(t.language())
+            return t.to_language()
         except AttributeError:
             pass
     # If we don't have a real translation object, assume it's the default language.
@@ -224,12 +228,12 @@ def get_language():
 def get_language_bidi():
     """
     Returns selected language's BiDi layout.
-    
+
     * False = left-to-right layout
     * True = right-to-left layout
     """
     from django.conf import settings
-    
+
     base_lang = get_language().split('-')[0]
     return base_lang in settings.LANGUAGES_BIDI
 
@@ -513,7 +517,7 @@ def get_date_formats():
     warnings.warn(
         "'django.utils.translation.get_date_formats' is deprecated. "
         "Please update your code to use the new i18n aware formatting.",
-        PendingDeprecationWarning
+        DeprecationWarning
     )
     from django.conf import settings
     date_format = ugettext('DATE_FORMAT')
@@ -536,7 +540,7 @@ def get_partial_date_formats():
     warnings.warn(
         "'django.utils.translation.get_partial_date_formats' is deprecated. "
         "Please update your code to use the new i18n aware formatting.",
-        PendingDeprecationWarning
+        DeprecationWarning
     )
     from django.conf import settings
     year_month_format = ugettext('YEAR_MONTH_FORMAT')

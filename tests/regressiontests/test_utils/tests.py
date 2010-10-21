@@ -1,6 +1,26 @@
-r"""
+import sys
+
+from django.test import TestCase, skipUnlessDBFeature, skipIfDBFeature
+
+
+if sys.version_info >= (2, 5):
+    from python_25 import AssertNumQueriesTests
+
+
+class SkippingTestCase(TestCase):
+    def test_skip_unless_db_feature(self):
+        "A test that might be skipped is actually called."
+        # Total hack, but it works, just want an attribute that's always true.
+        @skipUnlessDBFeature("__class__")
+        def test_func():
+            raise ValueError
+
+        self.assertRaises(ValueError, test_func)
+
+
+__test__ = {"API_TEST": r"""
 # Some checks of the doctest output normalizer.
-# Standard doctests do fairly 
+# Standard doctests do fairly
 >>> from django.utils import simplejson
 >>> from django.utils.xmlutils import SimplerXMLGenerator
 >>> from StringIO import StringIO
@@ -55,7 +75,7 @@ r"""
 >>> produce_json()
 '["foo", {"whiz": 42, "bar": ["baz", null, 1.0, 2]}]'
 
-# XML output is normalized for attribute order, so it doesn't matter 
+# XML output is normalized for attribute order, so it doesn't matter
 # which order XML element attributes are listed in output
 >>> produce_xml()
 '<?xml version="1.0" encoding="UTF-8"?>\n<foo aaa="1.0" bbb="2.0"><bar ccc="3.0">Hello</bar><whiz>Goodbye</whiz></foo>'
@@ -69,4 +89,4 @@ r"""
 >>> produce_xml_fragment()
 '<foo bbb="2.0" aaa="1.0">Hello</foo><bar ddd="4.0" ccc="3.0"></bar>'
 
-"""
+"""}

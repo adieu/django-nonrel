@@ -1,16 +1,15 @@
 import datetime
+import warnings
+from xml.dom import minidom
+
 from django.contrib.syndication import feeds, views
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
 from django.utils import tzinfo
 from django.utils.feedgenerator import rfc2822_date, rfc3339_date
-from models import Entry
-from xml.dom import minidom
 
-try:
-    set
-except NameError:
-    from sets import Set as set
+from models import Entry
+
 
 class FeedTestCase(TestCase):
     fixtures = ['feeddata.json']
@@ -236,6 +235,25 @@ class SyndicationFeedTest(FeedTestCase):
             if link.getAttribute('rel') == 'self':
                 self.assertEqual(link.getAttribute('href'), 'http://example.com/customfeedurl/')
 
+    def test_secure_urls(self):
+        """
+        Test URLs are prefixed with https:// when feed is requested over HTTPS.
+        """
+        response = self.client.get('/syndication/rss2/', **{
+            'wsgi.url_scheme': 'https',
+        })
+        doc = minidom.parseString(response.content)
+        chan = doc.getElementsByTagName('channel')[0]
+        self.assertEqual(
+            chan.getElementsByTagName('link')[0].firstChild.wholeText[0:5],
+            'https'
+        )
+        atom_link = chan.getElementsByTagName('atom:link')[0]
+        self.assertEqual(atom_link.getAttribute('href')[0:5], 'https')
+        for link in doc.getElementsByTagName('link'):
+            if link.getAttribute('rel') == 'self':
+                self.assertEqual(link.getAttribute('href')[0:5], 'https')
+
     def test_item_link_error(self):
         """
         Test that a ImproperlyConfigured is raised if no link could be found
@@ -271,6 +289,10 @@ class SyndicationFeedTest(FeedTestCase):
             'http://example.com/foo/?arg=value'
         )
         self.assertEqual(
+            views.add_domain('example.com', '/foo/?arg=value', True),
+            'https://example.com/foo/?arg=value'
+        )
+        self.assertEqual(
             views.add_domain('example.com', 'http://djangoproject.com/doc/'),
             'http://djangoproject.com/doc/'
         )
@@ -292,6 +314,15 @@ class DeprecatedSyndicationFeedTest(FeedTestCase):
     """
     Tests for the deprecated API (feed() view and the feed_dict etc).
     """
+    def setUp(self):
+        warnings.filterwarnings('ignore', category=DeprecationWarning,
+                                module='django.contrib.syndication.feeds')
+        warnings.filterwarnings('ignore', category=DeprecationWarning,
+                                module='django.contrib.syndication.views')
+
+    def tearDown(self):
+        warnings.resetwarnings()
+        warnings.simplefilter('ignore', PendingDeprecationWarning)
 
     def test_empty_feed_dict(self):
         """

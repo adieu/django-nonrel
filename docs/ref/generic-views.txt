@@ -8,7 +8,7 @@ abstracted into "generic views" that let you quickly provide common views of
 an object without actually needing to write any Python code.
 
 A general introduction to generic views can be found in the :doc:`topic guide
-</topics/http/generic-views>`.
+</topics/generic-views>`.
 
 This reference contains details of Django's built-in generic views, along with
 a list of all keyword arguments that a generic view expects. Remember that
@@ -96,6 +96,8 @@ If the given URL is ``None``, Django will return an ``HttpResponseGone`` (410).
 .. versionadded:: 1.1
     The ``permanent`` keyword argument is new in Django 1.1.
 
+.. versionadded:: 1.3
+    The ``query_string`` keyword argument is new in Django 1.3.
 
 **Example:**
 
@@ -203,10 +205,10 @@ If ``template_name`` isn't specified, this view will use the template
 
 In addition to ``extra_context``, the template's context will be:
 
-    * ``date_list``: A list of ``datetime.date`` objects representing all
-      years that have objects available according to ``queryset``. These are
-      ordered in reverse. This is equivalent to
-      ``queryset.dates(date_field, 'year')[::-1]``.
+    * ``date_list``: A ``DateQuerySet`` object containing all years that have
+      have objects available according to ``queryset``, represented as
+      ``datetime.datetime`` objects. These are ordered in reverse. This is
+      equivalent to ``queryset.dates(date_field, 'year')[::-1]``.
 
     .. versionchanged:: 1.0
        The behaviour depending on ``template_object_name`` is new in this version.
@@ -288,9 +290,9 @@ If ``template_name`` isn't specified, this view will use the template
 
 In addition to ``extra_context``, the template's context will be:
 
-    * ``date_list``: A list of ``datetime.date`` objects representing all
-      months that have objects available in the given year, according to
-      ``queryset``, in ascending order.
+    * ``date_list``: A ``DateQuerySet`` object containing all months that have
+      have objects available according to ``queryset``, represented as
+      ``datetime.datetime`` objects, in ascending order.
 
     * ``year``: The given year, as a four-character string.
 
@@ -378,9 +380,9 @@ If ``template_name`` isn't specified, this view will use the template
 
 In addition to ``extra_context``, the template's context will be:
 
-    * ``date_list``: A list of ``datetime.date`` objects representing all
-      days that have objects available in the given month, according to
-      ``queryset``, in ascending order.    
+    * ``date_list``: A ``DateQuerySet`` object containing all days that have
+      have objects available in the given month, according to ``queryset``,
+      represented as ``datetime.datetime`` objects, in ascending order.
 
     * ``month``: A ``datetime.date`` object representing the given month.
 

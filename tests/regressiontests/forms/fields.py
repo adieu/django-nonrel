@@ -30,11 +30,10 @@ import re
 import os
 from decimal import Decimal
 
-from unittest import TestCase
-
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.forms import *
 from django.forms.widgets import RadioFieldRenderer
+from django.utils.unittest import TestCase
 
 
 def fix_os_paths(x):
@@ -56,6 +55,10 @@ class FieldsTests(TestCase):
             callable(*args, **kwargs)
         except error, e:
             self.assertEqual(message, str(e))
+
+    def test_field_sets_widget_is_required(self):
+        self.assertEqual(Field(required=True).widget.is_required, True)
+        self.assertEqual(Field(required=False).widget.is_required, False)
 
     # CharField ###################################################################
 
@@ -426,6 +429,7 @@ class FieldsTests(TestCase):
         self.assertEqual(u'', f.clean(''))
         self.assertEqual(u'', f.clean(None))
         self.assertEqual(u'person@example.com', f.clean('person@example.com'))
+        self.assertEqual(u'example@example.com', f.clean('      example@example.com  \t   \t '))
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid e-mail address.']", f.clean, 'foo')
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid e-mail address.']", f.clean, 'foo@')
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid e-mail address.']", f.clean, 'foo@bar')

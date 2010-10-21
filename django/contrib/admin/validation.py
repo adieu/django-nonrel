@@ -4,7 +4,6 @@ from django.forms.models import (BaseModelForm, BaseModelFormSet, fields_for_mod
     _get_foreign_key)
 from django.contrib.admin.options import flatten_fieldsets, BaseModelAdmin
 from django.contrib.admin.options import HORIZONTAL, VERTICAL
-from django.contrib.admin.util import lookup_field
 
 
 __all__ = ['validate']
@@ -170,7 +169,7 @@ def validate_inline(cls, parent, parent_model):
     fk = _get_foreign_key(parent_model, cls.model, fk_name=cls.fk_name, can_fail=True)
 
     # extra = 3
-    if not isinstance(getattr(cls, 'extra'), int):
+    if not isinstance(cls.extra, int):
         raise ImproperlyConfigured("'%s.extra' should be a integer."
                 % cls.__name__)
 

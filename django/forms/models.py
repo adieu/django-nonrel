@@ -40,7 +40,7 @@ def construct_instance(form, instance, fields=None, exclude=None):
         if not f.editable or isinstance(f, models.AutoField) \
                 or not f.name in cleaned_data:
             continue
-        if fields and f.name not in fields:
+        if fields is not None and f.name not in fields:
             continue
         if exclude and f.name in exclude:
             continue
@@ -168,7 +168,7 @@ def fields_for_model(model, fields=None, exclude=None, widgets=None, formfield_c
     for f in opts.fields + opts.many_to_many:
         if not f.editable:
             continue
-        if fields and not f.name in fields:
+        if fields is not None and not f.name in fields:
             continue
         if exclude and f.name in exclude:
             continue
@@ -526,10 +526,9 @@ class BaseModelFormSet(BaseFormSet):
                 # it's already invalid
                 if not hasattr(form, "cleaned_data"):
                     continue
-                # get each of the fields for which we have data on this form
-                if [f for f in unique_check if f in form.cleaned_data and form.cleaned_data[f] is not None]:
-                    # get the data itself
-                    row_data = tuple([form.cleaned_data[field] for field in unique_check])
+                # get data for each field of each of unique_check
+                row_data = tuple([form.cleaned_data[field] for field in unique_check if field in form.cleaned_data])
+                if row_data and not None in row_data:
                     # if we've aready seen it then we have a uniqueness failure
                     if row_data in seen_data:
                         # poke error messages into the right places and mark

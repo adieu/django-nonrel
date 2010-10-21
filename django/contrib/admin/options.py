@@ -5,7 +5,7 @@ from django.forms.models import BaseInlineFormSet
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.admin import widgets
 from django.contrib.admin import helpers
-from django.contrib.admin.util import unquote, flatten_fieldsets, get_deleted_objects, model_ngettext, model_format_dict
+from django.contrib.admin.util import unquote, flatten_fieldsets, get_deleted_objects, model_format_dict
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_protect
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -21,7 +21,7 @@ from django.utils.safestring import mark_safe
 from django.utils.functional import curry
 from django.utils.text import capfirst, get_text_list
 from django.utils.translation import ugettext as _
-from django.utils.translation import ungettext, ugettext_lazy
+from django.utils.translation import ungettext
 from django.utils.encoding import force_unicode
 
 HORIZONTAL, VERTICAL = 1, 2
@@ -453,9 +453,8 @@ class ModelAdmin(BaseModelAdmin):
 
     def log_deletion(self, request, object, object_repr):
         """
-        Log that an object has been successfully deleted. Note that since the
-        object is deleted, it might no longer be safe to call *any* methods
-        on the object, hence this method getting object_repr.
+        Log that an object will be deleted. Note that this method is called
+        before the deletion.
 
         The default implementation creates an admin LogEntry object.
         """
@@ -1097,6 +1096,7 @@ class ModelAdmin(BaseModelAdmin):
         ], context, context_instance=context_instance)
 
     @csrf_protect_m
+    @transaction.commit_on_success
     def delete_view(self, request, object_id, extra_context=None):
         "The 'delete' admin view for this model."
         opts = self.model._meta

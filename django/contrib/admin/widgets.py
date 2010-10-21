@@ -85,20 +85,12 @@ class AdminRadioFieldRenderer(RadioFieldRenderer):
 class AdminRadioSelect(forms.RadioSelect):
     renderer = AdminRadioFieldRenderer
 
-class AdminFileWidget(forms.FileInput):
-    """
-    A FileField Widget that shows its current value if it has one.
-    """
-    def __init__(self, attrs={}):
-        super(AdminFileWidget, self).__init__(attrs)
+class AdminFileWidget(forms.ClearableFileInput):
+    template_with_initial = (u'<p class="file-upload">%s</p>'
+                            % forms.ClearableFileInput.template_with_initial)
+    template_with_clear = (u'<span class="clearable-file-input">%s</span>'
+                           % forms.ClearableFileInput.template_with_clear)
 
-    def render(self, name, value, attrs=None):
-        output = []
-        if value and hasattr(value, "url"):
-            output.append('%s <a target="_blank" href="%s">%s</a> <br />%s ' % \
-                (_('Currently:'), value.url, value, _('Change:')))
-        output.append(super(AdminFileWidget, self).render(name, value, attrs))
-        return mark_safe(u''.join(output))
 
 class ForeignKeyRawIdWidget(forms.TextInput):
     """
@@ -163,10 +155,9 @@ class ManyToManyRawIdWidget(ForeignKeyRawIdWidget):
     A Widget for displaying ManyToMany ids in the "raw_id" interface rather than
     in a <select multiple> box.
     """
-    def __init__(self, rel, attrs=None, using=None):
-        super(ManyToManyRawIdWidget, self).__init__(rel, attrs, using=None)
-
     def render(self, name, value, attrs=None):
+        if attrs is None:
+            attrs = {}
         attrs['class'] = 'vManyToManyRawIdAdminField'
         if value:
             value = ','.join([force_unicode(v) for v in value])
@@ -181,12 +172,9 @@ class ManyToManyRawIdWidget(ForeignKeyRawIdWidget):
         return ''
 
     def value_from_datadict(self, data, files, name):
-        value = data.get(name, None)
-        if value and ',' in value:
-            return data[name].split(',')
+        value = data.get(name)
         if value:
-            return [value]
-        return None
+            return value.split(',')
 
     def _has_changed(self, initial, data):
         if initial is None:

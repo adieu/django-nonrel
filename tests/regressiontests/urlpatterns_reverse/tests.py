@@ -1,21 +1,6 @@
 """
 Unit tests for reverse URL lookups.
 """
-__test__ = {'API_TESTS': """
-
-RegexURLResolver should raise an exception when no urlpatterns exist.
-
->>> from django.core.urlresolvers import RegexURLResolver
->>> no_urls = 'regressiontests.urlpatterns_reverse.no_urls'
->>> resolver = RegexURLResolver(r'^$', no_urls)
->>> resolver.url_patterns
-Traceback (most recent call last):
-...
-ImproperlyConfigured: The included urlconf regressiontests.urlpatterns_reverse.no_urls doesn't have any patterns in it
-"""}
-
-import unittest
-
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse, resolve, NoReverseMatch,\
@@ -24,6 +9,7 @@ from django.core.urlresolvers import reverse, resolve, NoReverseMatch,\
 from django.http import HttpResponseRedirect, HttpResponsePermanentRedirect
 from django.shortcuts import redirect
 from django.test import TestCase
+from django.utils import unittest
 
 import urlconf_outer
 import urlconf_inner
@@ -144,6 +130,27 @@ test_data = (
 
 )
 
+class NoURLPatternsTests(TestCase):
+    urls = 'regressiontests.urlpatterns_reverse.no_urls'
+
+    def assertRaisesErrorWithMessage(self, error, message, callable,
+        *args, **kwargs):
+        self.assertRaises(error, callable, *args, **kwargs)
+        try:
+            callable(*args, **kwargs)
+        except error, e:
+            self.assertEqual(message, str(e))
+
+    def test_no_urls_exception(self):
+        """
+        RegexURLResolver should raise an exception when no urlpatterns exist.
+        """
+        resolver = RegexURLResolver(r'^$', self.urls)
+
+        self.assertRaisesErrorWithMessage(ImproperlyConfigured,
+            "The included urlconf regressiontests.urlpatterns_reverse.no_urls "\
+            "doesn't have any patterns in it", getattr, resolver, 'url_patterns')
+
 class URLPatternReverse(TestCase):
     urls = 'regressiontests.urlpatterns_reverse.urls'
 
@@ -174,7 +181,7 @@ class ResolverTests(unittest.TestCase):
         self.assertRaises(Resolver404, resolve, 'a')
         self.assertRaises(Resolver404, resolve, '\\')
         self.assertRaises(Resolver404, resolve, '.')
-        
+
     def test_404_tried_urls_have_names(self):
         """
         Verifies that the list of URLs that come back from a Resolver404

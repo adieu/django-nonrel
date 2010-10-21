@@ -140,7 +140,7 @@ class BaseDatabaseCreation(object):
         import warnings
         warnings.warn(
             'Database creation API for m2m tables has been deprecated. M2M models are now automatically generated',
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
         output = []
@@ -154,7 +154,7 @@ class BaseDatabaseCreation(object):
         import warnings
         warnings.warn(
             'Database creation API for m2m tables has been deprecated. M2M models are now automatically generated',
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
         from django.db import models
@@ -217,7 +217,7 @@ class BaseDatabaseCreation(object):
         import warnings
         warnings.warn(
             'Database creation API for m2m tables has been deprecated. M2M models are now automatically generated',
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
         from django.db import models
@@ -322,7 +322,7 @@ class BaseDatabaseCreation(object):
         import warnings
         warnings.warn(
             'Database creation API for m2m tables has been deprecated. M2M models are now automatically generated',
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
         qn = self.connection.ops.quote_name
@@ -347,8 +347,9 @@ class BaseDatabaseCreation(object):
 
         self.connection.close()
         self.connection.settings_dict["NAME"] = test_database_name
-        can_rollback = self._rollback_works()
-        self.connection.settings_dict["SUPPORTS_TRANSACTIONS"] = can_rollback
+
+        # Confirm the feature set of the test database
+        self.connection.features.confirm()
 
         # Report syncdb messages at one level lower than that requested.
         # This ensures we don't get flooded with messages during testing
@@ -404,18 +405,6 @@ class BaseDatabaseCreation(object):
                 sys.exit(1)
 
         return test_database_name
-
-    def _rollback_works(self):
-        cursor = self.connection.cursor()
-        cursor.execute('CREATE TABLE ROLLBACK_TEST (X INT)')
-        self.connection._commit()
-        cursor.execute('INSERT INTO ROLLBACK_TEST (X) VALUES (8)')
-        self.connection._rollback()
-        cursor.execute('SELECT COUNT(X) FROM ROLLBACK_TEST')
-        count, = cursor.fetchone()
-        cursor.execute('DROP TABLE ROLLBACK_TEST')
-        self.connection._commit()
-        return count == 0
 
     def destroy_test_db(self, old_database_name, verbosity=1):
         """

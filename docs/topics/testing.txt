@@ -57,8 +57,8 @@ frameworks are:
           class MyFuncTestCase(unittest.TestCase):
               def testBasic(self):
                   a = ['larry', 'curly', 'moe']
-                  self.assertEquals(my_func(a, 0), 'larry')
-                  self.assertEquals(my_func(a, 1), 'curly')
+                  self.assertEqual(my_func(a, 0), 'larry')
+                  self.assertEqual(my_func(a, 1), 'curly')
 
 You can choose the test framework you like, depending on which syntax you
 prefer, or you can mix and match, using one framework for some of your code and
@@ -151,9 +151,38 @@ documentation for doctest`_.
 Writing unit tests
 ------------------
 
-Like doctests, Django's unit tests use a standard library module: unittest_.
-This module uses a different way of defining tests, taking a class-based
-approach.
+Like doctests, Django's unit tests use a Python standard library
+module: unittest_. This module uses a different way of defining tests,
+taking a class-based approach.
+
+.. admonition:: unittest2
+
+    .. versionchanged:: 1.3
+
+    Python 2.7 introduced some major changes to the unittest library,
+    adding some extremely useful features. To ensure that every Django
+    project can benefit from these new features, Django ships with a
+    copy of unittest2_, a copy of the Python 2.7 unittest library,
+    backported for Python 2.4 compatibility.
+
+    To access this library, Django provides the
+    ``django.utils.unittest`` module alias. If you are using Python
+    2.7, or you have installed unittest2 locally, Django will map the
+    alias to the installed version of the unittest library. Otherwise,
+    Django will use it's own bundled version of unittest2.
+
+    To use this alias, simply use::
+
+        from django.utils import unittest
+
+    wherever you would have historically used::
+
+        import unittest
+
+    If you want to continue to use the base unittest libary, you can --
+    you just won't get any of the nice new unittest2 features.
+
+.. _unittest2: http://pypi.python.org/pypi/unittest2
 
 As with doctests, for a given Django application, the test runner looks for
 unit tests in two places:
@@ -168,7 +197,7 @@ unit tests in two places:
 This example ``unittest.TestCase`` subclass is equivalent to the example given
 in the doctest section above::
 
-    import unittest
+    from django.utils import unittest
     from myapp.models import Animal
 
     class AnimalTestCase(unittest.TestCase):
@@ -177,8 +206,8 @@ in the doctest section above::
             self.cat = Animal.objects.create(name="cat", sound="meow")
 
         def testSpeaking(self):
-            self.assertEquals(self.lion.speak(), 'The lion says "roar"')
-            self.assertEquals(self.cat.speak(), 'The cat says "meow"')
+            self.assertEqual(self.lion.speak(), 'The lion says "roar"')
+            self.assertEqual(self.cat.speak(), 'The cat says "meow"')
 
 When you :ref:`run your tests <running-tests>`, the default behavior of the
 test utility is to find all the test cases (that is, subclasses of
@@ -198,6 +227,7 @@ documentation`_.
 .. _unittest: http://docs.python.org/library/unittest.html
 .. _standard library unittest documentation: unittest_
 .. _suggested organization: http://docs.python.org/library/unittest.html#organizing-tests
+
 
 Which should I use?
 -------------------
@@ -230,6 +260,8 @@ you:
       common methods. The framework also supports explicit setup and/or cleanup
       routines, which give you a high level of control over the environment
       in which your test cases are run.
+
+    * If you're writing tests for Django itself, you should use ``unittest``.
 
 Again, remember that you can use both systems side-by-side (even in the same
 app). In the end, most projects will eventually end up using both. Each shines
@@ -308,6 +340,15 @@ If you do not want to wait for the currently running test to finish, you
 can press ``Ctrl-C`` a second time and the test run will halt immediately,
 but not gracefully. No details of the tests run before the interruption will
 be reported, and any test databases created by the run will not be destroyed.
+
+.. admonition:: Test with warnings enabled
+
+    It's a good idea to run your tests with Python warnings enabled:
+    ``python -Wall manage.py test``. The ``-Wall`` flag tells Python to
+    display deprecation warnings. Django, like many other Python libraries,
+    uses these warnings to flag when features are going away. It also might
+    flag areas in your code that aren't strictly wrong but could benefit
+    from a better implementation.
 
 Running tests outside the test runner
 -------------------------------------
@@ -485,6 +526,8 @@ Testing tools
 
 Django provides a small set of tools that come in handy when writing tests.
 
+.. _test-client:
+
 The test client
 ---------------
 
@@ -574,6 +617,8 @@ Note a few important things about how the test client works:
 
     * By default, the test client will disable any CSRF checks
       performed by your site.
+
+      .. versionadded:: 1.2.2
 
       If, for some reason, you *want* the test client to perform CSRF
       checks, you can create an instance of the test client that
@@ -883,15 +928,15 @@ Specifically, a ``Response`` object has the following attributes:
         The HTTP status of the response, as an integer. See RFC2616_ for a full
         list of HTTP status codes.
 
-    .. attribute:: template
+    .. versionadded:: 1.3
 
-        The ``Template`` instance that was used to render the final content. Use
+    .. attribute:: templates
+
+        A list of ``Template`` instances used to render the final content, in
+        the order they were rendered. For each template in the list, use
         ``template.name`` to get the template's file name, if the template was
-        loaded from a file. (The name is a string such as ``'admin/index.html'``.)
-
-        If the rendered page used multiple templates -- e.g., using :ref:`template
-        inheritance<template-inheritance>` -- then ``template`` will be a list of
-        ``Template`` instances, in the order in which they were rendered.
+        loaded from a file. (The name is a string such as
+        ``'admin/index.html'``.)
 
 You can also use dictionary syntax on the response object to query the value
 of any settings in the HTTP headers. For example, you could determine the
@@ -951,7 +996,7 @@ Example
 
 The following is a simple unit test using the test client::
 
-    import unittest
+    from django.utils import unittest
     from django.test.client import Client
 
     class SimpleTest(unittest.TestCase):
@@ -964,10 +1009,57 @@ The following is a simple unit test using the test client::
             response = self.client.get('/customer/details/')
 
             # Check that the response is 200 OK.
-            self.failUnlessEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
 
             # Check that the rendered context contains 5 customers.
-            self.failUnlessEqual(len(response.context['customers']), 5)
+            self.assertEqual(len(response.context['customers']), 5)
+
+The request factory
+-------------------
+
+.. Class:: RequestFactory
+
+.. versionadded:: 1.3
+
+The :class:`~django.test.client.RequestFactory` shares the same API as
+the test client. However, instead of behaving like a browser, the
+RequestFactory provides a way to generate a request instance that can
+be used as the first argument to any view. This means you can test a
+view function the same way as you would test any other function -- as
+a black box, with exactly known inputs, testing for specific outputs.
+
+The API for the :class:`~django.test.client.RequestFactory` is a slightly
+restricted subset of the test client API:
+
+    * It only has access to the HTTP methods :meth:`~Client.get()`,
+      :meth:`~Client.post()`, :meth:`~Client.put()`,
+      :meth:`~Client.delete()`, :meth:`~Client.head()` and
+      :meth:`~Client.options()`.
+
+    * These methods accept all the same arguments *except* for
+      ``follows``. Since this is just a factory for producing
+      requests, it's up to you to handle the response.
+
+Example
+~~~~~~~
+
+The following is a simple unit test using the request factory::
+
+    from django.utils import unittest
+    from django.test.client import RequestFactory
+
+    class SimpleTest(unittest.TestCase):
+        def setUp(self):
+            # Every test needs access to the request factory.
+            self.factory = RequestFactory()
+
+        def test_details(self):
+            # Create an instance of a GET request.
+            request = self.factory.get('/customer/details')
+
+            # Test my_view() as if it were deployed at /customer/details
+            response = my_view(request)
+            self.assertEquals(response.status_code, 200)
 
 TestCase
 --------
@@ -1048,19 +1140,19 @@ worry about state (such as cookies) carrying over from one test to another.
 
 This means, instead of instantiating a ``Client`` in each test::
 
-    import unittest
+    from django.utils import unittest
     from django.test.client import Client
 
     class SimpleTest(unittest.TestCase):
         def test_details(self):
             client = Client()
             response = client.get('/customer/details/')
-            self.failUnlessEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
 
         def test_index(self):
             client = Client()
             response = client.get('/customer/index/')
-            self.failUnlessEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
 
 ...you can just refer to ``self.client``, like so::
 
@@ -1069,11 +1161,35 @@ This means, instead of instantiating a ``Client`` in each test::
     class SimpleTest(TestCase):
         def test_details(self):
             response = self.client.get('/customer/details/')
-            self.failUnlessEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
 
         def test_index(self):
             response = self.client.get('/customer/index/')
-            self.failUnlessEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
+
+Customizing the test client
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 1.3
+
+.. attribute:: TestCase.client_class
+
+If you want to use a different Client class (for example, a subclass
+with customized behavior), you can use the
+:attr:`~TestCase.client_class` class attribute to specify a custom
+``Client`` class in your test case::
+
+    from django.test import TestCase
+    from django.test.client import Client
+
+    class MyTestClient(Client):
+        # .. specialized methods for your environment ..
+
+    class MyTest(TestCase):
+        client_class = MyTestClient
+
+        def test_my_stuff(self):
+            # .. Here self.client is an instance of MyTestClient ..
 
 .. _topics-testing-fixtures:
 
@@ -1228,7 +1344,7 @@ Assertions
     Addded ``msg_prefix`` argument.
 
 As Python's normal ``unittest.TestCase`` class implements assertion methods
-such as ``assertTrue`` and ``assertEquals``, Django's custom ``TestCase`` class
+such as ``assertTrue`` and ``assertEqual``, Django's custom ``TestCase`` class
 provides a number of custom assertion methods that are useful for testing Web
 applications:
 
@@ -1303,6 +1419,32 @@ cause of an failure in your test suite.
     implicit ordering, you will need to apply a ``order_by()`` clause to your
     queryset to ensure that the test will pass reliably.
 
+.. method:: TestCase.assertNumQueries(num, func, *args, **kwargs):
+
+    .. versionadded:: 1.3
+
+    Asserts that when ``func`` is called with ``*args`` and ``**kwargs`` that
+    ``num`` database queries are executed.
+
+    If a ``"using"`` key is present in ``kwargs`` it is used as the database
+    alias for which to check the number of queries.  If you wish to call a
+    function with a ``using`` parameter you can do it by wrapping the call with
+    a ``lambda`` to add an extra parameter::
+
+        self.assertNumQueries(7, lambda: my_function(using=7))
+
+    If you're using Python 2.5 or greater you can also use this as a context
+    manager::
+
+        # This is necessary in Python 2.5 to enable the with statement, in 2.6
+        # and up it is no longer necessary.
+        from __future__ import with_statement
+
+        with self.assertNumQueries(2):
+            Person.objects.create(name="Aaron")
+            Person.objects.create(name="Daniel")
+
+
 .. _topics-testing-email:
 
 E-mail services
@@ -1348,10 +1490,10 @@ and contents::
                 fail_silently=False)
 
             # Test that one message has been sent.
-            self.assertEquals(len(mail.outbox), 1)
+            self.assertEqual(len(mail.outbox), 1)
 
             # Verify that the subject of the first message is correct.
-            self.assertEquals(mail.outbox[0].subject, 'Subject here')
+            self.assertEqual(mail.outbox[0].subject, 'Subject here')
 
 As noted :ref:`previously <emptying-test-outbox>`, the test outbox is emptied
 at the start of every test in a Django ``TestCase``. To empty the outbox
@@ -1361,6 +1503,61 @@ manually, assign the empty list to ``mail.outbox``::
 
     # Empty the test outbox
     mail.outbox = []
+
+Skipping tests
+--------------
+
+.. versionadded:: 1.3
+
+The unittest library provides the ``@skipIf`` and ``@skipUnless``
+decorators to allow you to skip tests if you know ahead of time that
+those tests are going to fail under certain conditions.
+
+For example, if your test requires a particular optional library in
+order to succeed, you could decorate the test case with ``@skipIf``.
+Then, the test runner will report that the test wasn't executed and
+why, instead of failing the test or omitting the test altogether.
+
+To supplement these test skipping behaviors, Django provides two
+additional skip decorators. Instead of testing a generic boolean,
+these decorators check the capabilities of the database, and skip the
+test if the database doesn't support a specific named feature.
+
+The decorators use a string identifier to describe database features.
+This string corresponds to attributes of the database connection
+features class. See :class:`~django.db.backends.BaseDatabaseFeatures`
+class for a full list of database features that can be used as a basis
+for skipping tests.
+
+skipIfDBFeature
+~~~~~~~~~~~~~~~
+
+Skip the decorated test if the named database feature is supported.
+
+For example, the following test will not be executed if the database
+supports transactions (e.g., it would *not* run under PostgreSQL, but
+it would under MySQL with MyISAM tables)::
+
+    class MyTests(TestCase):
+        @skipIfDBFeature('supports_transactions')
+        def test_transaction_behavior(self):
+            # ... conditional test code
+
+skipUnlessDBFeature
+~~~~~~~~~~~~~~~~~~~
+
+Skip the decorated test if the named database feature is *not*
+supported.
+
+For example, the following test will not be executed if the database
+supports transactions (e.g., it would run under PostgreSQL, but *not*
+under MySQL with MyISAM tables)::
+
+    class MyTests(TestCase):
+        @skipUnlessDBFeature('supports_transactions')
+        def test_transaction_behavior(self):
+            # ... conditional test code
+
 
 Using different testing frameworks
 ==================================

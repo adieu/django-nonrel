@@ -7,9 +7,107 @@ This page documents release notes for the as-yet-unreleased Django
 up-to-date information for those who are following trunk.
 
 Django 1.3 includes a number of nifty `new features`_, lots of bug
-fixes and an easy upgrade path from Django 1.2.
+fixes, some minor `backwards incompatible changes`_ and an easy
+upgrade path from Django 1.2.
 
 .. _new features: `What's new in Django 1.3`_
+
+.. _backwards incompatible changes: backwards-incompatible-changes-1.3_
+
+What's new in Django 1.3
+========================
+
+Class-based views
+~~~~~~~~~~~~~~~~~
+
+Django 1.3 adds a framework that allows you to use a class as a view.
+This means you can compose a view out of a collection of methods that
+can be subclassed and overridden to provide
+
+Analogs of all the old function-based generic views have been
+provided, along with a completely generic view base class that can be
+used as the basis for reusable applications that can be easily
+extended.
+
+See :doc:`the documentation on Generic Views</topics/generic-views>`
+for more details. There is also a document to help you :doc:`convert
+your function-based generic views to class-based
+views</topics/generic-views-migration>`.
+
+Logging
+~~~~~~~
+
+Django 1.3 adds framework-level support for Python's logging module.
+This means you can now easily configure and control logging as part of
+your Django project. A number of logging handlers and logging calls
+have been added to Django's own code as well -- most notably, the
+error emails sent on a HTTP 500 server error are now handled as a
+logging activity. See :doc:`the documentation on Django's logging
+interface </topics/logging>` for more details.
+
+``unittest2`` support
+~~~~~~~~~~~~~~~~~~~~~
+
+Python 2.7 introduced some major changes to the unittest library,
+adding some extremely useful features. To ensure that every Django
+project can benefit from these new features, Django ships with a
+copy of unittest2_, a copy of the Python 2.7 unittest library,
+backported for Python 2.4 compatibility.
+
+To access this library, Django provides the
+``django.utils.unittest`` module alias. If you are using Python
+2.7, or you have installed unittest2 locally, Django will map the
+alias to the installed version of the unittest library. Otherwise,
+Django will use it's own bundled version of unittest2.
+
+To use this alias, simply use::
+
+    from django.utils import unittest
+
+wherever you would have historically used::
+
+    import unittest
+
+If you want to continue to use the base unittest libary, you can --
+you just won't get any of the nice new unittest2 features.
+
+.. _unittest2: http://pypi.python.org/pypi/unittest2
+
+Transaction context managers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Users of Python 2.5 and above may now use :ref:`transaction management functions
+<transaction-management-functions>` as `context managers`_. For example::
+
+    with transaction.autocommit():
+        # ...
+
+.. _context managers: http://docs.python.org/glossary.html#term-context-manager
+
+For more information, see :ref:`transaction-management-functions`.
+
+Everything else
+~~~~~~~~~~~~~~~
+
+Django :doc:`1.1 <1.1>` and :doc:`1.2 <1.2>` added
+lots of big ticket items to Django, like multiple-database support,
+model validation, and a session-based messages framework. However,
+this focus on big features came at the cost of lots of smaller
+features.
+
+To compensate for this, the focus of the Django 1.3 development
+process has been on adding lots of smaller, long standing feature
+requests. These include:
+
+    * Improved tools for accessing and manipulating the current Site.
+
+    * A :class:`~django.test.client.RequestFactory` for mocking
+      requests in tests.
+
+    * A new test assertion --
+      :meth:`~django.test.client.Client.assertNumQueries` -- making it
+      easier to test the database activity associated with a view.
+
 
 .. _backwards-incompatible-changes-1.3:
 
@@ -40,7 +138,32 @@ custom widget to your form that sets the ``render_value`` argument::
 
     class LoginForm(forms.Form):
         username = forms.CharField(max_length=100)
-        password = forms.PasswordField(widget=forms.PasswordInput(render_value=True))
+        password = forms.CharField(widget=forms.PasswordInput(render_value=True))
+
+Clearable default widget for FileField
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Django 1.3 now includes a ``ClearableFileInput`` form widget in addition to
+``FileInput``. ``ClearableFileInput`` renders with a checkbox to clear the
+field's value (if the field has a value and is not required); ``FileInput``
+provided no means for clearing an existing file from a ``FileField``.
+
+``ClearableFileInput`` is now the default widget for a ``FileField``, so
+existing forms including ``FileField`` without assigning a custom widget will
+need to account for the possible extra checkbox in the rendered form output.
+
+To return to the previous rendering (without the ability to clear the
+``FileField``), use the ``FileInput`` widget in place of
+``ClearableFileInput``. For instance, in a ``ModelForm`` for a hypothetical
+``Document`` model with a ``FileField`` named ``document``::
+
+    from django import forms
+    from myapp.models import Document
+
+    class DocumentForm(forms.ModelForm):
+        class Meta:
+            model = Document
+            widgets = {'document': forms.FileInput}
 
 .. _deprecated-features-1.3:
 
@@ -81,6 +204,41 @@ If you are currently using the ``mod_python`` request handler, it is strongly
 encouraged you redeploy your Django instances using :doc:`mod_wsgi
 </howto/deployment/modwsgi>`.
 
-What's new in Django 1.3
-========================
+Function-based generic views
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+As a result of the introduction of class-based generic views, the
+function-based generic views provided by Django have been deprecated.
+The following modules and the views they contain have been deprecated:
+
+      * :mod:`django.views.generic.create_update`
+      * :mod:`django.views.generic.date_based`
+      * :mod:`django.views.generic.list_detail`
+      * :mod:`django.views.generic.simple`
+
+Test client response ``template`` attribute
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Django's :ref:`test client <test-client>` returns
+:class:`~django.test.client.Response` objects annotated with extra testing
+information. In Django versions prior to 1.3, this included a
+:attr:`~django.test.client.Response.template` attribute containing information
+about templates rendered in generating the response: either None, a single
+:class:`~django.template.Template` object, or a list of
+:class:`~django.template.Template` objects. This inconsistency in return values
+(sometimes a list, sometimes not) made the attribute difficult to work with.
+
+In Django 1.3 the :attr:`~django.test.client.Response.template` attribute is
+deprecated in favor of a new :attr:`~django.test.client.Response.templates`
+attribute, which is always a list, even if it has only a single element or no
+elements.
+
+``DjangoTestRunner``
+~~~~~~~~~~~~~~~~~~~~
+
+As a result of the introduction of support for unittest2, the features
+of :class:`django.test.simple.DjangoTestRunner` (including fail-fast
+and Ctrl-C test termination) have been made redundant. In view of this
+redundancy, :class:`~django.test.simple.DjangoTestRunner` has been
+turned into an empty placeholder class, and will be removed entirely
+in Django 1.5.

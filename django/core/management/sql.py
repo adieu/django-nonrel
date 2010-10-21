@@ -2,12 +2,9 @@ import os
 import re
 
 from django.conf import settings
-from django.contrib.contenttypes import generic
 from django.core.management.base import CommandError
-from django.dispatch import dispatcher
 from django.db import models
 from django.db.models import get_models
-from django.db.backends.util import truncate_name
 
 def sql_create(app, style, connection):
     "Returns a list of the CREATE TABLE SQL statements for the given app."
@@ -18,7 +15,7 @@ def sql_create(app, style, connection):
         raise CommandError("Django doesn't know which syntax to use for your SQL statements,\n" +
             "because you haven't specified the ENGINE setting for the database.\n" +
             "Edit your settings file and change DATBASES['default']['ENGINE'] to something like\n" +
-            "'django.db.backends.postgresql' or 'django.db.backends.mysql'")
+            "'django.db.backends.postgresql' or 'django.db.backends.mysql'.")
 
     # Get installed models, so we generate REFERENCES right.
     # We trim models from the current app so that the sqlreset command does not

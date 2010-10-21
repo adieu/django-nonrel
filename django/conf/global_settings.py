@@ -84,6 +84,7 @@ LANGUAGES = (
     ('no', gettext_noop('Norwegian')),
     ('nb', gettext_noop('Norwegian Bokmal')),
     ('nn', gettext_noop('Norwegian Nynorsk')),
+    ('pa', gettext_noop('Punjabi')),
     ('pl', gettext_noop('Polish')),
     ('pt', gettext_noop('Portuguese')),
     ('pt-br', gettext_noop('Brazilian Portuguese')),
@@ -193,18 +194,13 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.contrib.auth.context_processors.auth',
     'django.core.context_processors.debug',
     'django.core.context_processors.i18n',
-    'django.core.context_processors.media',
+    'django.contrib.staticfiles.context_processors.staticfiles',
 #    'django.core.context_processors.request',
     'django.contrib.messages.context_processors.messages',
 )
 
 # Output to use in template system for invalid (e.g. misspelled) variables.
 TEMPLATE_STRING_IF_INVALID = ''
-
-# URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
-# trailing slash.
-# Examples: "http://foo.com/media/", "/media/".
-ADMIN_MEDIA_PREFIX = '/media/'
 
 # Default e-mail address to use for various automated correspondence from
 # the site managers.
@@ -292,34 +288,34 @@ FILE_UPLOAD_PERMISSIONS = None
 FORMAT_MODULE_PATH = None
 
 # Default formatting for date objects. See all available format strings here:
-# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#now
+# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
 DATE_FORMAT = 'N j, Y'
 
 # Default formatting for datetime objects. See all available format strings here:
-# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#now
+# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
 DATETIME_FORMAT = 'N j, Y, P'
 
 # Default formatting for time objects. See all available format strings here:
-# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#now
+# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
 TIME_FORMAT = 'P'
 
 # Default formatting for date objects when only the year and month are relevant.
 # See all available format strings here:
-# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#now
+# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
 YEAR_MONTH_FORMAT = 'F Y'
 
 # Default formatting for date objects when only the month and day are relevant.
 # See all available format strings here:
-# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#now
+# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
 MONTH_DAY_FORMAT = 'F j'
 
 # Default short formatting for date objects. See all available format strings here:
-# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#now
+# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
 SHORT_DATE_FORMAT = 'm/d/Y'
 
 # Default short formatting for datetime objects.
 # See all available format strings here:
-# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#now
+# http://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
 SHORT_DATETIME_FORMAT = 'm/d/Y P'
 
 # Default formats to be used when parsing dates from input boxes, in order
@@ -439,7 +435,7 @@ COMMENTS_ALLOW_PROFANITIES = False
 
 # The profanities that will trigger a validation error in the
 # 'hasNoProfanities' validator. All of these should be in lowercase.
-PROFANITIES_LIST = ('asshat', 'asshead', 'asshole', 'cunt', 'fuck', 'gook', 'nigger', 'shit')
+PROFANITIES_LIST = ()
 
 # The group ID that designates which users are banned.
 # Set to None if you're not using it.
@@ -499,6 +495,34 @@ MESSAGE_STORAGE = 'django.contrib.messages.storage.user_messages.LegacyFallbackS
 # django.contrib.messages to avoid imports in this settings file.
 
 ###########
+# LOGGING #
+###########
+
+# The callable to use to configure logging
+LOGGING_CONFIG = 'django.utils.log.dictConfig'
+
+# The default logging configuration. This sends an email to
+# the site admins on every HTTP 500 error. All other log
+# records are sent to the bit bucket.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler'
+        }
+    },
+    'loggers': {
+        'django.request':{
+            'handlers': ['mail_admins'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    }
+}
+
+###########
 # TESTING #
 ###########
 
@@ -522,3 +546,34 @@ TEST_DATABASE_COLLATION = None
 
 # The list of directories to search for fixtures
 FIXTURE_DIRS = ()
+
+###############
+# STATICFILES #
+###############
+
+# Absolute path to the directory that holds media.
+# Example: "/home/media/media.lawrence.com/static/"
+STATICFILES_ROOT = ''
+
+# URL that handles the static files served from STATICFILES_ROOT.
+# Example: "http://media.lawrence.com/static/"
+STATICFILES_URL = '/static/'
+
+# A list of locations of additional static files
+STATICFILES_DIRS = ()
+
+# The default file storage backend used during the build process
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
+# List of finder classes that know how to find static files in
+# various locations.
+STATICFILES_FINDERS = (
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+#    'django.contrib.staticfiles.finders.DefaultStorageFinder',
+)
+
+# URL prefix for admin media -- CSS, JavaScript and images.
+# Make sure to use a trailing slash.
+# Examples: "http://foo.com/static/admin/", "/static/admin/".
+ADMIN_MEDIA_PREFIX = '/static/admin/'

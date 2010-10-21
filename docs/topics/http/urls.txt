@@ -338,12 +338,12 @@ Here's the example URLconf from the :doc:`Django overview </intro/overview>`::
     from django.conf.urls.defaults import *
 
     urlpatterns = patterns('',
-        (r'^articles/(\d{4})/$', 'mysite.news.views.year_archive'),
-        (r'^articles/(\d{4})/(\d{2})/$', 'mysite.news.views.month_archive'),
-        (r'^articles/(\d{4})/(\d{2})/(\d+)/$', 'mysite.news.views.article_detail'),
+        (r'^articles/(\d{4})/$', 'news.views.year_archive'),
+        (r'^articles/(\d{4})/(\d{2})/$', 'news.views.month_archive'),
+        (r'^articles/(\d{4})/(\d{2})/(\d+)/$', 'news.views.article_detail'),
     )
 
-In this example, each view has a common prefix -- ``'mysite.news.views'``.
+In this example, each view has a common prefix -- ``'news.views'``.
 Instead of typing that out for each entry in ``urlpatterns``, you can use the
 first argument to the ``patterns()`` function to specify a prefix to apply to
 each view function.
@@ -352,7 +352,7 @@ With this in mind, the above example can be written more concisely as::
 
     from django.conf.urls.defaults import *
 
-    urlpatterns = patterns('mysite.news.views',
+    urlpatterns = patterns('news.views',
         (r'^articles/(\d{4})/$', 'year_archive'),
         (r'^articles/(\d{4})/(\d{2})/$', 'month_archive'),
         (r'^articles/(\d{4})/(\d{2})/(\d+)/$', 'article_detail'),
@@ -938,10 +938,10 @@ Normally, you should always use :func:`~django.core.urlresolvers.reverse` or
 :func:`~django.db.models.permalink` to define URLs within your application.
 However, if your application constructs part of the URL hierarchy itself, you
 may occasionally need to generate URLs. In that case, you need to be able to
-find the base URL of the Django project within its web server
-(normally, :func:`~django.core.urlresolvers.reverse` takes care of this for 
+find the base URL of the Django project within its Web server
+(normally, :func:`~django.core.urlresolvers.reverse` takes care of this for
 you). In that case, you can call ``get_script_prefix()``, which will return the
 script prefix portion of the URL for your Django project. If your Django
-project is at the root of its webserver, this is always ``"/"``, but it can be
-changed, for instance  by using ``django.root`` (see :ref:`How to use
-Django with Apache and mod_python <howto-deployment-modpython>`).
+project is at the root of its Web server, this is always ``"/"``, but it can be
+changed, for instance  by using ``django.root`` (see :doc:`How to use
+Django with Apache and mod_python </howto/deployment/modpython>`).

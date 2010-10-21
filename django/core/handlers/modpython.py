@@ -1,5 +1,6 @@
 import os
 from pprint import pformat
+import sys
 from warnings import warn
 
 from django import http
@@ -8,6 +9,10 @@ from django.core.handlers.base import BaseHandler
 from django.core.urlresolvers import set_script_prefix
 from django.utils import datastructures
 from django.utils.encoding import force_unicode, smart_str, iri_to_uri
+from django.utils.log import getLogger
+
+logger = getLogger('django.request')
+
 
 # NOTE: do *not* import settings (or any module which eventually imports
 # settings) until after ModPythonHandler has been called; otherwise os.environ
@@ -200,6 +205,13 @@ class ModPythonHandler(BaseHandler):
             try:
                 request = self.request_class(req)
             except UnicodeDecodeError:
+                logger.warning('Bad Request (UnicodeDecodeError): %s' % request.path,
+                    exc_info=sys.exc_info(),
+                    extra={
+                        'status_code': 400,
+                        'request': request
+                    }
+                )
                 response = http.HttpResponseBadRequest()
             else:
                 response = self.get_response(request)

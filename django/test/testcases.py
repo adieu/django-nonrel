@@ -1,5 +1,5 @@
 import re
-import unittest
+import sys
 from urlparse import urlsplit, urlunsplit
 from xml.dom.minidom import parseString, Node
 
@@ -7,12 +7,17 @@ from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
 from django.core.urlresolvers import clear_url_caches
-from django.db import transaction, connections, DEFAULT_DB_ALIAS
+from django.db import transaction, connection, connections, DEFAULT_DB_ALIAS
 from django.http import QueryDict
 from django.test import _doctest as doctest
 from django.test.client import Client
-from django.utils import simplejson
+from django.utils import simplejson, unittest as ut2
 from django.utils.encoding import smart_str
+from django.utils.functional import wraps
+
+__all__ = ('DocTestRunner', 'OutputChecker', 'TestCase', 'TransactionTestCase',
+           'skipIfDBFeature', 'skipUnlessDBFeature')
+
 
 try:
     all
@@ -21,6 +26,7 @@ except NameError:
 
 normalize_long_ints = lambda s: re.sub(r'(?<![\w])(\d+)L(?![\w])', '\\1', s)
 normalize_decimals = lambda s: re.sub(r"Decimal\('(\d+(\.\d*)?)'\)", lambda m: "Decimal(\"%s\")" % m.groups()[0], s)
+
 
 def to_list(value):
     """
@@ -37,8 +43,6 @@ real_commit = transaction.commit
 real_rollback = transaction.rollback
 real_enter_transaction_management = transaction.enter_transaction_management
 real_leave_transaction_management = transaction.leave_transaction_management
-real_savepoint_commit = transaction.savepoint_commit
-real_savepoint_rollback = transaction.savepoint_rollback
 real_managed = transaction.managed
 
 def nop(*args, **kwargs):
@@ -47,8 +51,6 @@ def nop(*args, **kwargs):
 def disable_transaction_methods():
     transaction.commit = nop
     transaction.rollback = nop
-    transaction.savepoint_commit = nop
-    transaction.savepoint_rollback = nop
     transaction.enter_transaction_management = nop
     transaction.leave_transaction_management = nop
     transaction.managed = nop
@@ -56,8 +58,6 @@ def disable_transaction_methods():
 def restore_transaction_methods():
     transaction.commit = real_commit
     transaction.rollback = real_rollback
-    transaction.savepoint_commit = real_savepoint_commit
-    transaction.savepoint_rollback = real_savepoint_rollback
     transaction.enter_transaction_management = real_enter_transaction_management
     transaction.leave_transaction_management = real_leave_transaction_management
     transaction.managed = real_managed
@@ -209,7 +209,38 @@ class DocTestRunner(doctest.DocTestRunner):
         for conn in connections:
             transaction.rollback_unless_managed(using=conn)
 
-class TransactionTestCase(unittest.TestCase):
+class _AssertNumQueriesContext(object):
+    def __init__(self, test_case, num, connection):
+        self.test_case = test_case
+        self.num = num
+        self.connection = connection
+
+    def __enter__(self):
+        self.old_debug_cursor = self.connection.use_debug_cursor
+        self.connection.use_debug_cursor = True
+        self.starting_queries = len(self.connection.queries)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            return
+
+        self.connection.use_debug_cursor = self.old_debug_cursor
+        final_queries = len(self.connection.queries)
+        executed = final_queries - self.starting_queries
+
+        self.test_case.assertEqual(
+            executed, self.num, "%d queries executed, %d expected" % (
+                executed, self.num
+            )
+        )
+
+
+class TransactionTestCase(ut2.TestCase):
+    # The class we'll use for the test client self.client.
+    # Can be overridden in derived classes.
+    client_class = Client
+
     def _pre_setup(self):
         """Performs any pre-test setup. This includes:
 
@@ -251,7 +282,7 @@ class TransactionTestCase(unittest.TestCase):
         set up. This means that user-defined Test Cases aren't required to
         include a call to super().setUp().
         """
-        self.client = Client()
+        self.client = self.client_class()
         try:
             self._pre_setup()
         except (KeyboardInterrupt, SystemExit):
@@ -445,7 +476,7 @@ class TransactionTestCase(unittest.TestCase):
         if msg_prefix:
             msg_prefix += ": "
 
-        template_names = [t.name for t in to_list(response.template)]
+        template_names = [t.name for t in response.templates]
         if not template_names:
             self.fail(msg_prefix + "No templates used to render the response")
         self.failUnless(template_name in template_names,
@@ -461,7 +492,7 @@ class TransactionTestCase(unittest.TestCase):
         if msg_prefix:
             msg_prefix += ": "
 
-        template_names = [t.name for t in to_list(response.template)]
+        template_names = [t.name for t in response.templates]
         self.failIf(template_name in template_names,
             msg_prefix + "Template '%s' was used unexpectedly in rendering"
             " the response" % template_name)
@@ -469,12 +500,28 @@ class TransactionTestCase(unittest.TestCase):
     def assertQuerysetEqual(self, qs, values, transform=repr):
         return self.assertEqual(map(transform, qs), values)
 
+    def assertNumQueries(self, num, func=None, *args, **kwargs):
+        using = kwargs.pop("using", DEFAULT_DB_ALIAS)
+        connection = connections[using]
+
+        context = _AssertNumQueriesContext(self, num, connection)
+        if func is None:
+            return context
+
+        # Basically emulate the `with` statement here.
+
+        context.__enter__()
+        try:
+            func(*args, **kwargs)
+        finally:
+            context.__exit__(*sys.exc_info())
+
 def connections_support_transactions():
     """
     Returns True if all connections support transactions.  This is messy
     because 2.4 doesn't support any or all.
     """
-    return all(conn.settings_dict['SUPPORTS_TRANSACTIONS']
+    return all(conn.features.supports_transactions
         for conn in connections.all())
 
 class TestCase(TransactionTestCase):
@@ -530,3 +577,28 @@ class TestCase(TransactionTestCase):
 
         for connection in connections.all():
             connection.close()
+
+def _deferredSkip(condition, reason):
+    def decorator(test_func):
+        if not (isinstance(test_func, type) and issubclass(test_func, TestCase)):
+            @wraps(test_func)
+            def skip_wrapper(*args, **kwargs):
+                if condition():
+                    raise ut2.SkipTest(reason)
+                return test_func(*args, **kwargs)
+            test_item = skip_wrapper
+        else:
+            test_item = test_func
+        test_item.__unittest_skip_why__ = reason
+        return test_item
+    return decorator
+
+def skipIfDBFeature(feature):
+    "Skip a test if a database has the named feature"
+    return _deferredSkip(lambda: getattr(connection.features, feature),
+                         "Database has feature %s" % feature)
+
+def skipUnlessDBFeature(feature):
+    "Skip a test unless a database has the named feature"
+    return _deferredSkip(lambda: not getattr(connection.features, feature),
+                         "Database doesn't support feature %s" % feature)

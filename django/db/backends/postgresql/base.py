@@ -80,8 +80,11 @@ class UnicodeCursorWrapper(object):
 
 class DatabaseFeatures(BaseDatabaseFeatures):
     uses_savepoints = True
+    requires_rollback_on_dirty_transaction = True
+    has_real_datatype = True
 
 class DatabaseWrapper(BaseDatabaseWrapper):
+    vendor = 'postgresql'
     operators = {
         'exact': '= %s',
         'iexact': '= UPPER(%s)',
@@ -105,10 +108,10 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         import warnings
         warnings.warn(
             'The "postgresql" backend has been deprecated. Use "postgresql_psycopg2" instead.',
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
-        self.features = DatabaseFeatures()
+        self.features = DatabaseFeatures(self)
         self.ops = DatabaseOperations(self)
         self.client = DatabaseClient(self)
         self.creation = DatabaseCreation(self)

@@ -11,7 +11,7 @@ API. Refer to the :doc:`data model reference </ref/models/index>` for full
 details of all the various model lookup options.
 
 Throughout this guide (and in the reference), we'll refer to the following
-models, which comprise a weblog application:
+models, which comprise a Weblog application:
 
 .. _queryset-model-example:
 
@@ -60,7 +60,7 @@ funky model importing.)
 
 Assuming models live in a file ``mysite/blog/models.py``, here's an example::
 
-    >>> from mysite.blog.models import Blog
+    >>> from blog.models import Blog
     >>> b = Blog(name='Beatles Blog', tagline='All the latest Beatles news.')
     >>> b.save()
 
@@ -94,18 +94,23 @@ the database until you explicitly call ``save()``.
 Saving ``ForeignKey`` and ``ManyToManyField`` fields
 ----------------------------------------------------
 
-Updating ``ForeignKey`` fields works exactly the same way as saving a normal
-field; simply assign an object of the right type to the field in question::
+Updating a ``ForeignKey`` field works exactly the same way as saving a normal
+field; simply assign an object of the right type to the field in question.
+This example updates the ``blog`` attribute of an ``Entry`` instance ``entry``::
 
+    >>> from blog.models import Entry
+    >>> entry = Entry.objects.get(pk=1)
     >>> cheese_blog = Blog.objects.get(name="Cheddar Talk")
     >>> entry.blog = cheese_blog
     >>> entry.save()
 
 Updating a ``ManyToManyField`` works a little differently; use the ``add()``
-method on the field to add a record to the relation::
+method on the field to add a record to the relation. This example adds the
+``Author`` instance ``joe`` to the ``entry`` object::
 
-    >> joe = Author.objects.create(name="Joe")
-    >> entry.authors.add(joe)
+    >>> from blog.models import Author
+    >>> joe = Author.objects.create(name="Joe")
+    >>> entry.authors.add(joe)
 
 Django will complain if you try to assign or add an object of the wrong type.
 

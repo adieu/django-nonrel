@@ -69,6 +69,8 @@ purely database-related, whereas :attr:`~Field.blank` is validation-related. If
 a field has ``blank=True``, validation on Django's admin site will allow entry
 of an empty value. If a field has ``blank=False``, the field will be required.
 
+.. _field-choices:
+
 ``choices``
 -----------
 
@@ -924,6 +926,15 @@ define the details of how the relation works.
     when defining relations on :ref:`abstract models
     <abstract-base-classes>`; and when you do so
     :ref:`some special syntax <abstract-related-name>` is available.
+
+    If you wish to suppress the provision of a backwards relation, you may
+    simply provide a ``related_name`` which ends with a ``'+'`` character.
+    For example::
+   
+        user = models.ForeignKey(User, related_name='+')
+
+    will ensure that no backwards relation to this model is provided on the 
+    ``User`` model.
 
 .. attribute:: ForeignKey.to_field
 

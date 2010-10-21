@@ -2,7 +2,6 @@
 The main QuerySet implementation. This provides the public API for the ORM.
 """
 
-from copy import deepcopy
 from itertools import izip
 
 from django.db import connections, router, transaction, IntegrityError
@@ -620,7 +619,18 @@ class QuerySet(object):
         with data aggregated from related fields.
         """
         for arg in args:
+            if arg.default_alias in kwargs:
+                raise ValueError("The %s named annotation conflicts with the "
+                                 "default name for another annotation."
+                                 % arg.default_alias)
             kwargs[arg.default_alias] = arg
+
+        names = set(self.model._meta.get_all_field_names())
+        for aggregate in kwargs:
+            if aggregate in names:
+                raise ValueError("The %s annotation conflicts with a field on "
+                    "the model." % aggregate)
+
 
         obj = self._clone()
 
@@ -1022,7 +1032,7 @@ class EmptyQuerySet(QuerySet):
         pass
 
     def _clone(self, klass=None, setup=False, **kwargs):
-        c = super(EmptyQuerySet, self)._clone(klass, **kwargs)
+        c = super(EmptyQuerySet, self)._clone(klass, setup=setup, **kwargs)
         c._result_cache = []
         return c
 

@@ -1,25 +1,17 @@
+import unittest
 from datetime import date
 
-from django import db
 from django import forms
-from django.forms.models import modelform_factory, ModelChoiceField
-from django.conf import settings
+from django.forms.models import modelform_factory, ModelChoiceField, fields_for_model, construct_instance
 from django.test import TestCase
-from django.core.exceptions import FieldError
+from django.core.exceptions import FieldError, ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from models import Person, RealPerson, Triple, FilePathModel, Article, \
-    Publication, CustomFF, Author, Author1, Homepage
+    Publication, CustomFF, Author, Author1, Homepage, Document, Edition
 
 
 class ModelMultipleChoiceFieldTests(TestCase):
-
-    def setUp(self):
-        self.old_debug = settings.DEBUG
-        settings.DEBUG = True
-
-    def tearDown(self):
-        settings.DEBUG = self.old_debug
-
     def test_model_multiple_choice_number_of_queries(self):
         """
         Test that ModelMultipleChoiceField does O(1) queries instead of
@@ -28,10 +20,8 @@ class ModelMultipleChoiceFieldTests(TestCase):
         for i in range(30):
             Person.objects.create(name="Person %s" % i)
 
-        db.reset_queries()
         f = forms.ModelMultipleChoiceField(queryset=Person.objects.all())
-        selected = f.clean([1, 3, 5, 7, 9])
-        self.assertEquals(len(db.connection.queries), 1)
+        self.assertNumQueries(1, f.clean, [1, 3, 5, 7, 9])
 
 class TripleForm(forms.ModelForm):
     class Meta:
@@ -310,7 +300,7 @@ class InvalidFieldAndFactory(TestCase):
                     model = Person
                     fields = ('name', 'no-field')
         except FieldError, e:
-            # Make sure the exception contains some reference to the 
+            # Make sure the exception contains some reference to the
             # field responsible for the problem.
             self.assertTrue('no-field' in e.args[0])
         else:
@@ -333,3 +323,122 @@ class InvalidFieldAndFactory(TestCase):
         self.assertRaises(FieldError, modelform_factory,
                           Person, fields=['no-field', 'name'])
 
+
+class DocumentForm(forms.ModelForm):
+    class Meta:
+        model = Document
+
+class FileFieldTests(unittest.TestCase):
+    def test_clean_false(self):
+        """
+        If the ``clean`` method on a non-required FileField receives False as
+        the data (meaning clear the field value), it returns False, regardless
+        of the value of ``initial``.
+
+        """
+        f = forms.FileField(required=False)
+        self.assertEqual(f.clean(False), False)
+        self.assertEqual(f.clean(False, 'initial'), False)
+
+    def test_clean_false_required(self):
+        """
+        If the ``clean`` method on a required FileField receives False as the
+        data, it has the same effect as None: initial is returned if non-empty,
+        otherwise the validation catches the lack of a required value.
+
+        """
+        f = forms.FileField(required=True)
+        self.assertEqual(f.clean(False, 'initial'), 'initial')
+        self.assertRaises(ValidationError, f.clean, False)
+
+    def test_full_clear(self):
+        """
+        Integration happy-path test that a model FileField can actually be set
+        and cleared via a ModelForm.
+
+        """
+        form = DocumentForm()
+        self.assert_('name="myfile"' in unicode(form))
+        self.assert_('myfile-clear' not in unicode(form))
+        form = DocumentForm(files={'myfile': SimpleUploadedFile('something.txt', 'content')})
+        self.assert_(form.is_valid())
+        doc = form.save(commit=False)
+        self.assertEqual(doc.myfile.name, 'something.txt')
+        form = DocumentForm(instance=doc)
+        self.assert_('myfile-clear' in unicode(form))
+        form = DocumentForm(instance=doc, data={'myfile-clear': 'true'})
+        doc = form.save(commit=False)
+        self.assertEqual(bool(doc.myfile), False)
+
+    def test_clear_and_file_contradiction(self):
+        """
+        If the user submits a new file upload AND checks the clear checkbox,
+        they get a validation error, and the bound redisplay of the form still
+        includes the current file and the clear checkbox.
+
+        """
+        form = DocumentForm(files={'myfile': SimpleUploadedFile('something.txt', 'content')})
+        self.assert_(form.is_valid())
+        doc = form.save(commit=False)
+        form = DocumentForm(instance=doc,
+                            files={'myfile': SimpleUploadedFile('something.txt', 'content')},
+                            data={'myfile-clear': 'true'})
+        self.assert_(not form.is_valid())
+        self.assertEqual(form.errors['myfile'],
+                         [u'Please either submit a file or check the clear checkbox, not both.'])
+        rendered = unicode(form)
+        self.assert_('something.txt' in rendered)
+        self.assert_('myfile-clear' in rendered)
+
+class EditionForm(forms.ModelForm):
+    author = forms.ModelChoiceField(queryset=Person.objects.all())
+    publication = forms.ModelChoiceField(queryset=Publication.objects.all())
+    edition = forms.IntegerField()
+    isbn = forms.CharField(max_length=13)
+
+    class Meta:
+        model = Edition
+
+class UniqueErrorsTests(TestCase):
+    def setUp(self):
+        self.author1 = Person.objects.create(name=u'Author #1')
+        self.author2 = Person.objects.create(name=u'Author #2')
+        self.pub1 = Publication.objects.create(title='Pub #1', date_published=date(2000, 10, 31))
+        self.pub2 = Publication.objects.create(title='Pub #2', date_published=date(2004, 1, 5))
+        form = EditionForm(data={'author': self.author1.pk, 'publication': self.pub1.pk, 'edition': 1, 'isbn': '9783161484100'})
+        form.save()
+
+    def test_unique_error_message(self):
+        form = EditionForm(data={'author': self.author1.pk, 'publication': self.pub2.pk, 'edition': 1, 'isbn': '9783161484100'})
+        self.assertEquals(form.errors, {'isbn': [u'Edition with this Isbn already exists.']})
+
+    def test_unique_together_error_message(self):
+        form = EditionForm(data={'author': self.author1.pk, 'publication': self.pub1.pk, 'edition': 2, 'isbn': '9783161489999'})
+        self.assertEquals(form.errors, {'__all__': [u'Edition with this Author and Publication already exists.']})
+        form = EditionForm(data={'author': self.author2.pk, 'publication': self.pub1.pk, 'edition': 1, 'isbn': '9783161487777'})
+        self.assertEquals(form.errors, {'__all__': [u'Edition with this Publication and Edition already exists.']})
+
+
+class EmptyFieldsTestCase(TestCase):
+    "Tests for fields=() cases as reported in #14119"
+    class EmptyPersonForm(forms.ModelForm):
+        class Meta:
+            model = Person
+            fields = ()
+
+    def test_empty_fields_to_fields_for_model(self):
+        "An argument of fields=() to fields_for_model should return an empty dictionary"
+        field_dict = fields_for_model(Person, fields=())
+        self.assertEqual(len(field_dict), 0)
+
+    def test_empty_fields_on_modelform(self):
+        "No fields on a ModelForm should actually result in no fields"
+        form = self.EmptyPersonForm()
+        self.assertEqual(len(form.fields), 0)
+
+    def test_empty_fields_to_construct_instance(self):
+        "No fields should be set on a model instance if construct_instance receives fields=()"
+        form = modelform_factory(Person)({'name': 'John Doe'})
+        self.assertTrue(form.is_valid())
+        instance = construct_instance(form, Person(), fields=())
+        self.assertEqual(instance.name, '')

@@ -268,7 +268,7 @@ class BaseForm(StrAndUnicode):
         self._clean_form()
         self._post_clean()
         if self._errors:
-            delattr(self, 'cleaned_data')
+            del self.cleaned_data
 
     def _clean_fields(self):
         for name, field in self.fields.items():
@@ -437,10 +437,8 @@ class BoundField(StrAndUnicode):
             if callable(data):
                 data = data()
         else:
-            if isinstance(self.field, FileField) and self.data is None:
-                data = self.form.initial.get(self.name, self.field.initial)
-            else:
-                data = self.data
+            data = self.field.bound_data(
+                self.data, self.form.initial.get(self.name, self.field.initial))
         data = self.field.prepare_value(data)
 
         if not only_initial:

@@ -17,6 +17,7 @@ from localflavor.fr import tests as localflavor_fr_tests
 from localflavor.generic import tests as localflavor_generic_tests
 from localflavor.id import tests as localflavor_id_tests
 from localflavor.ie import tests as localflavor_ie_tests
+from localflavor.il import IsraelLocalFlavorTests
 from localflavor.is_ import tests as localflavor_is_tests
 from localflavor.it import tests as localflavor_it_tests
 from localflavor.jp import tests as localflavor_jp_tests
@@ -37,9 +38,12 @@ from widgets import tests as widgets_tests
 from formsets import tests as formset_tests
 from media import media_tests
 
+
+from formsets import FormsetAsFooTests
 from fields import FieldsTests
 from validators import TestFieldWithValidators
-from widgets import WidgetTests
+from widgets import WidgetTests, ClearableFileInputTests
+from localflavor.be import BETests
 
 from input_formats import *
 
