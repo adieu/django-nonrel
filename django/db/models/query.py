@@ -1324,6 +1324,9 @@ def delete_objects(seen_objs, using):
                     signals.pre_delete.send(sender=cls, instance=instance,
                         using=using)
 
+            if not connection.features.supports_deleting_related_objects:
+                continue
+
             pk_list = [pk for pk,instance in items]
 
             update_query = sql.UpdateQuery(cls)

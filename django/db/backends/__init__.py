@@ -103,6 +103,8 @@ class BaseDatabaseFeatures(object):
     # integer primary keys.
     related_fields_match_type = False
     allow_sliced_subqueries = True
+    distinguishes_insert_from_update = True
+    supports_deleting_related_objects = True
 
     # Does the default test database allow multiple connections?
     # Usually an indication that the test database is in-memory
@@ -472,6 +474,15 @@ class BaseDatabaseOperations(object):
     # Same as prep_for_like_query(), but called for "iexact" matches, which
     # need not necessarily be implemented using "LIKE" in the backend.
     prep_for_iexact_query = prep_for_like_query
+
+    def value_to_db_auto(self, value):
+        """
+        Transform a value to an object compatible with the auto field required
+        by the backend driver for auto columns.
+        """
+        if value is None:
+            return None
+        return int(value)
 
     def value_to_db_date(self, value):
         """
