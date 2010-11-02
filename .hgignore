@@ -9,3 +9,4 @@ desktop.ini
 nbproject
 docs/_build/*
 tests/django
+build
