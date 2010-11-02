@@ -33,8 +33,8 @@ class FormMixin(object):
         """
         if self.request.method in ('POST', 'PUT'):
             return form_class(
-                self.request.POST,
-                self.request.FILES,
+                data=self.request.POST,
+                files=self.request.FILES,
                 initial=self.get_initial()
             )
         else:
@@ -84,8 +84,8 @@ class ModelFormMixin(FormMixin, SingleObjectMixin):
         """
         if self.request.method in ('POST', 'PUT'):
             return form_class(
-                self.request.POST,
-                self.request.FILES,
+                data=self.request.POST,
+                files=self.request.FILES,
                 initial=self.get_initial(),
                 instance=self.object,
             )
@@ -143,7 +143,8 @@ class ProcessFormView(View):
 
     # PUT is a valid HTTP verb for creating (with a known URL) or editing an
     # object, note that browsers only support POST for now.
-    put = post
+    def put(self, *args, **kwargs):
+        return self.post(*args, **kwargs)
 
 
 class BaseFormView(FormMixin, ProcessFormView):
@@ -174,7 +175,8 @@ class BaseCreateView(ModelFormMixin, ProcessFormView):
 
     # PUT is a valid HTTP verb for creating (with a known URL) or editing an
     # object, note that browsers only support POST for now.
-    put = post
+    def put(self, *args, **kwargs):
+        return self.post(*args, **kwargs)
 
 class CreateView(SingleObjectTemplateResponseMixin, BaseCreateView):
     """
@@ -200,7 +202,8 @@ class BaseUpdateView(ModelFormMixin, ProcessFormView):
 
     # PUT is a valid HTTP verb for creating (with a known URL) or editing an
     # object, note that browsers only support POST for now.
-    put = post
+    def put(self, *args, **kwargs):
+        return self.post(*args, **kwargs)
 
 
 class UpdateView(SingleObjectTemplateResponseMixin, BaseUpdateView):
@@ -223,7 +226,8 @@ class DeletionMixin(object):
         return HttpResponseRedirect(self.get_success_url())
 
     # Add support for browsers which only accept GET and POST for now.
-    post = delete
+    def post(self, *args, **kwargs):
+        return self.delete(*args, **kwargs)
 
     def get_success_url(self):
         if self.success_url:

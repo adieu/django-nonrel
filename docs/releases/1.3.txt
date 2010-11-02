@@ -165,6 +165,61 @@ To return to the previous rendering (without the ability to clear the
             model = Document
             widgets = {'document': forms.FileInput}
 
+New index on database session table
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Prior to Django 1.3, the database table used by the database backend
+for the :doc:`sessions </topics/http/sessions>` app had no index on
+the ``expire_date`` column. As a result, date-based queries on the
+session table -- such as the query that is needed to purge old
+sessions -- would be very slow if there were lots of sessions.
+
+If you have an existing project that is using the database session
+backend, you don't have to do anything to accommodate this change.
+However, you may get a significant performance boost if you manually
+add the new index to the session table. The SQL that will add the
+index can be found by running the :djadmin:`sqlindexes` admin
+command::
+
+    python manage.py sqlindexes sessions
+
+No more naughty words
+~~~~~~~~~~~~~~~~~~~~~
+
+Django has historically provided (and enforced) a list of profanities.
+The :doc:`comments app </ref/contrib/comments/index>` has enforced this
+list of profanities, preventing people from submitting comments that
+contained one of those profanities.
+
+Unfortunately, the technique used to implement this profanities list
+was woefully naive, and prone to the `Scunthorpe problem`_. Fixing the
+built in filter to fix this problem would require significant effort,
+and since natural language processing isn't the normal domain of a web
+framework, we have "fixed" the problem by making the list of
+prohibited words an empty list.
+
+If you want to restore the old behavior, simply put a
+``PROFANITIES_LIST`` setting in your settings file that includes the
+words that you want to prohibit (see the `commit that implemented this
+change`_ if you want to see the list of words that was historically
+prohibited). However, if avoiding profanities is important to you, you
+would be well advised to seek out a better, less naive approach to the
+problem.
+
+.. _Scunthorpe problem: http://en.wikipedia.org/wiki/Scunthorpe_problem
+.. _commit that implemented this change: http://code.djangoproject.com/changeset/13996
+
+Localflavor changes
+~~~~~~~~~~~~~~~~~~~
+
+Django 1.3 introduces the following backwards-incompatible changes to
+local flavors:
+
+    * Indonesia (id) -- The province "Nanggroe Aceh Darussalam (NAD)"
+      has been removed from the province list in favor of the new
+      official designation "Aceh (ACE)".
+
+
 .. _deprecated-features-1.3:
 
 Features deprecated in 1.3
