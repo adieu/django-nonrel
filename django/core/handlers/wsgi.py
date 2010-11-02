@@ -134,7 +134,7 @@ class WSGIRequest(http.HttpRequest):
         self.META['SCRIPT_NAME'] = script_name
         self.method = environ['REQUEST_METHOD'].upper()
         self._post_parse_error = False
-        if isinstance(self.environ['wsgi.input'], socket._fileobject):
+        if isinstance(self.environ['wsgi.input'], socket._fileobject.__class__):
             # Under development server 'wsgi.input' is an instance of
             # socket._fileobject which hangs indefinitely on reading bytes past
             # available count. To prevent this it's wrapped in LimitedStream
