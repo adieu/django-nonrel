@@ -221,6 +221,10 @@ class Field(object):
         except KeyError:
             return None
 
+    def related_db_type(self, connection):
+        # This is the db_type used by a ForeignKey.
+        return self.db_type(connection=connection)
+
     def unique(self):
         return self._unique or self.primary_key
     unique = property(unique)
@@ -462,21 +466,30 @@ class AutoField(Field):
     def get_internal_type(self):
         return "AutoField"
 
-    def to_python(self, value):
-        if value is None:
-            return value
+    def related_db_type(self, connection):
+        data = DictWrapper(self.__dict__, connection.ops.quote_name, "qn_")
+
         try:
-            return int(value)
-        except (TypeError, ValueError):
+            return connection.creation.data_types['RelatedAutoField'] % data
+        except KeyError:
+            return IntegerField().db_type(connection=connection)
+
+    def to_python(self, value):
+        if not (value is None or isinstance(value, (basestring, int, long))):
             raise exceptions.ValidationError(self.error_messages['invalid'])
+        return value
 
     def validate(self, value, model_instance):
         pass
 
     def get_prep_value(self, value):
-        if value is None:
-            return None
-        return int(value)
+        return value
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        # Casts AutoField into the format expected by the backend
+        if not prepared:
+            value = self.get_prep_value(value)
+        return connection.ops.value_to_db_auto(value)
 
     def contribute_to_class(self, cls, name):
         assert not cls._meta.has_auto_field, "A model can't have more than one AutoField."
@@ -621,7 +634,8 @@ class DateField(Field):
             raise exceptions.ValidationError(msg)
 
     def pre_save(self, model_instance, add):
-        if self.auto_now or (self.auto_now_add and add):
+        old_value = getattr(model_instance, self.attname)
+        if self.auto_now or (not old_value and self.auto_now_add and add):
             value = datetime.date.today()
             setattr(model_instance, self.attname, value)
             return value
@@ -710,7 +724,8 @@ class DateTimeField(DateField):
                     raise exceptions.ValidationError(self.error_messages['invalid'])
 
     def pre_save(self, model_instance, add):
-        if self.auto_now or (self.auto_now_add and add):
+        old_value = getattr(model_instance, self.attname)
+        if self.auto_now or (not old_value and self.auto_now_add and add):
             value = datetime.datetime.now()
             setattr(model_instance, self.attname, value)
             return value
@@ -979,6 +994,12 @@ class NullBooleanField(Field):
 class PositiveIntegerField(IntegerField):
     description = _("Integer")
 
+    def related_db_type(self, connection):
+        if not connection.features.related_fields_match_type:
+            return IntegerField().db_type(connection=connection)
+        return super(PositiveIntegerField, self).related_db_type(
+            connection=connection)
+
     def get_internal_type(self):
         return "PositiveIntegerField"
 
@@ -989,6 +1010,12 @@ class PositiveIntegerField(IntegerField):
 
 class PositiveSmallIntegerField(IntegerField):
     description = _("Integer")
+    def related_db_type(self, connection):
+        if not connection.features.related_fields_match_type:
+            return IntegerField().db_type(connection=connection)
+        return super(PositiveSmallIntegerField, self).related_db_type(
+            connection=connection)
+
     def get_internal_type(self):
         return "PositiveSmallIntegerField"
 
@@ -1087,7 +1114,8 @@ class TimeField(Field):
                 raise exceptions.ValidationError(self.error_messages['invalid'])
 
     def pre_save(self, model_instance, add):
-        if self.auto_now or (self.auto_now_add and add):
+        old_value = getattr(model_instance, self.attname)
+        if self.auto_now or (not old_value and self.auto_now_add and add):
             value = datetime.datetime.now().time()
             setattr(model_instance, self.attname, value)
             return value

@@ -169,8 +169,9 @@ class MultiPartParser(object):
                     file_name = self.IE_sanitize(unescape_entities(file_name))
 
                     content_type = meta_data.get('content-type', ('',))[0].strip()
+                    content_type_extra = meta_data.get('content-type', (0,{}))[1]
                     try:
-                        charset = meta_data.get('content-type', (0,{}))[1].get('charset', None)
+                        charset = content_type_extra.get('charset', None)
                     except:
                         charset = None
 
@@ -185,7 +186,7 @@ class MultiPartParser(object):
                             try:
                                 handler.new_file(field_name, file_name,
                                                  content_type, content_length,
-                                                 charset)
+                                                 charset, content_type_extra)
                             except StopFutureHandlers:
                                 break
 
