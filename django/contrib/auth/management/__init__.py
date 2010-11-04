@@ -38,12 +38,12 @@ def create_permissions(app, created_models, verbosity, **kwargs):
     # looking for, and b) have a codename we're looking for. It doesn't need to
     # have both, we have a list of exactly what we want, and it's faster to
     # write the query with fewer conditions.
-    all_perms = set(auth_app.Permission.objects.filter(
-        content_type__in=ctypes,
-        codename__in=codenames
-    ).values_list(
-        "content_type", "codename"
-    ))
+    all_perms = set()
+    ctypes_pks = set(ct.pk for ct in ctypes)
+    for ctype, codename in auth_app.Permission.objects.all().values_list(
+            'content_type', 'codename')[:1000000]:
+        if ctype in ctypes_pks and codename in codenames:
+            all_perms.add((ctype, codename))
 
     for ctype, (codename, name) in searched_perms:
         # If the permissions exists, move on.
