@@ -510,7 +510,19 @@ class Model(object):
             pk_set = pk_val is not None
             record_exists = True
             manager = cls._base_manager
-            if pk_set:
+            # TODO/NONREL: Some backends could emulate force_insert/_update
+            # with an optimistic transaction, but since it's costly we should
+            # only do it when the user explicitly wants it.
+            # By adding support for an optimistic locking transaction
+            # in Django (SQL: SELECT ... FOR UPDATE) we could even make that
+            # part fully reusable on all backends (the current .exists()
+            # check below isn't really safe if you have lots of concurrent
+            # requests. BTW, and neither is QuerySet.get_or_create).
+            try_update = connection.features.distinguishes_insert_from_update
+            if not try_update:
+                record_exists = False
+
+            if try_update and pk_set:
                 # Determine whether a record with the primary key already exists.
                 if (force_update or (not force_insert and
                         manager.using(using).filter(pk=pk_val).exists())):
@@ -563,6 +575,12 @@ class Model(object):
 
     save_base.alters_data = True
 
+            return
+
+        using = router.db_for_write(self.__class__, instance=self)
+        connection = connections[using]
+        if not connection.features.supports_deleting_related_objects:
+            # TODO/NONREL: support deleting related objects in background task
     def delete(self, using=None):
         using = using or router.db_for_write(self.__class__, instance=self)
         assert self._get_pk_val() is not None, "%s object can't be deleted because its %s attribute is set to None." % (self._meta.object_name, self._meta.pk.attname)

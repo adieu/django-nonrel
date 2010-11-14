@@ -1275,6 +1275,9 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
                                     pass
     return obj, index_end
 
+            if not connection.features.supports_deleting_related_objects:
+                continue
+
 
 class RawQuerySet(object):
     """
