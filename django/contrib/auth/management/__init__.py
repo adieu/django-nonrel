@@ -39,7 +39,7 @@ def create_permissions(app, created_models, verbosity, **kwargs):
     ctypes_pks = set(ct.pk for ct in ctypes)
     for ctype, codename in auth_app.Permission.objects.all().values_list(
             'content_type', 'codename')[:1000000]:
-        if ctype in ctypes_pks and codename in codenames:
+        if ctype in ctypes_pks:
             all_perms.add((ctype, codename))
 
     for ctype, (codename, name) in searched_perms:
