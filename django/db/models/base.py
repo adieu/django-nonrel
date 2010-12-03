@@ -268,6 +268,7 @@ class Model(object):
     _deferred = False
 
     def __init__(self, *args, **kwargs):
+        self._entity_exists = kwargs.pop('__entity_exists', False)
         signals.pre_init.send(sender=self.__class__, args=args, kwargs=kwargs)
 
         # Set up the storage for instance state
@@ -570,8 +571,14 @@ class Model(object):
 
         # Signal that the save is complete
         if origin and not meta.auto_created:
+            if connection.features.distinguishes_insert_from_update:
+                created = not record_exists
+            else:
+                created = not self._entity_exists
             signals.post_save.send(sender=origin, instance=self,
-                created=(not record_exists), raw=raw, using=using)
+                created=created, raw=raw, using=using)
+
+        self._entity_exists = True
 
     save_base.alters_data = True
 
@@ -582,6 +589,8 @@ class Model(object):
         collector = Collector(using=using)
         collector.collect([self])
         collector.delete()
+
+        self._entity_exists = False
 
     delete.alters_data = True
 

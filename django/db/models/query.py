@@ -277,10 +277,10 @@ class QuerySet(object):
                 if skip:
                     row_data = row[index_start:aggregate_start]
                     pk_val = row_data[pk_idx]
-                    obj = model_cls(**dict(zip(init_list, row_data)))
+                    obj = model_cls(**dict(zip(init_list, row_data), __entity_exists=True))
                 else:
                     # Omit aggregates in object creation.
-                    obj = self.model(*row[index_start:aggregate_start])
+                    obj = self.model(*row[index_start:aggregate_start], __entity_exists=True)
 
                 # Store the source database of the object
                 obj._state.db = self.db
@@ -1380,7 +1380,7 @@ class RawQuerySet(object):
         else:
             model_cls = self.model
 
-        instance = model_cls(**model_init_kwargs)
+        instance = model_cls(__entity_exists=True, **model_init_kwargs)
 
         for field, value in annotations:
             setattr(instance, field, value)
