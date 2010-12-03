@@ -280,7 +280,7 @@ class QuerySet(object):
                     obj = model_cls(**dict(zip(init_list, row_data), __entity_exists=True))
                 else:
                     # Omit aggregates in object creation.
-                    obj = self.model(*row[index_start:aggregate_start], __entity_exists=True)
+                    obj = self.model(*row[index_start:aggregate_start], **{'__entity_exists': True})
 
                 # Store the source database of the object
                 obj._state.db = self.db
