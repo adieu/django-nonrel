@@ -1181,9 +1181,9 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
             obj = None
         elif skip:
             klass = deferred_class_factory(klass, skip)
-            obj = klass(**dict(zip(init_list, fields)))
+            obj = klass(__entity_exists=True, **dict(zip(init_list, fields)))
         else:
-            obj = klass(*fields)
+            obj = klass(*fields, **{'__entity_exists': True})
 
     else:
         # Load all fields on klass
@@ -1199,7 +1199,7 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
         if fields == (None,) * field_count:
             obj = None
         else:
-            obj = klass(**dict(zip(field_names, fields)))
+            obj = klass(__entity_exists=True, **dict(zip(field_names, fields)))
 
     # If an object was retrieved, set the database state.
     if obj:
