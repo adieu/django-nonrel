@@ -105,6 +105,7 @@ class BaseDatabaseFeatures(object):
     allow_sliced_subqueries = True
     distinguishes_insert_from_update = True
     supports_deleting_related_objects = True
+    supports_select_related = True
 
     # Does the default test database allow multiple connections?
     # Usually an indication that the test database is in-memory
