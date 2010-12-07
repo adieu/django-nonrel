@@ -5,7 +5,6 @@ from django.conf import settings
 from django.core.management import call_command
 from django.utils.datastructures import DictWrapper
 
-
 # The prefix to put on the default database name when creating
 # the test database.
 TEST_DATABASE_PREFIX = 'test_'
