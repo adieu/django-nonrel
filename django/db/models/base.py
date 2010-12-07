@@ -358,6 +358,7 @@ class Model(object):
                     pass
             if kwargs:
                 raise TypeError("'%s' is an invalid keyword argument for this function" % kwargs.keys()[0])
+        self._original_pk = self.pk
         signals.post_init.send(sender=self.__class__, instance=self)
 
     def __repr__(self):
@@ -465,6 +466,7 @@ class Model(object):
         ('raw', 'cls', and 'origin').
         """
         using = using or router.db_for_write(self.__class__, instance=self)
+        entity_exists = bool(self._entity_exists and self._original_pk == self.pk)
         connection = connections[using]
         assert not (force_insert and force_update)
         if cls is None:
@@ -543,13 +545,18 @@ class Model(object):
                     order_value = manager.using(using).filter(**{field.name: getattr(self, field.attname)}).count()
                     self._order = order_value
 
+                if connection.features.distinguishes_insert_from_update:
+                    add = True
+                else:
+                    add = not entity_exists
+
                 if not pk_set:
                     if force_update:
                         raise ValueError("Cannot force an update in save() with no primary key.")
-                    values = [(f, f.get_db_prep_save(raw and getattr(self, f.attname) or f.pre_save(self, True), connection=connection))
+                    values = [(f, f.get_db_prep_save(raw and getattr(self, f.attname) or f.pre_save(self, add), connection=connection))
                         for f in meta.local_fields if not isinstance(f, AutoField)]
                 else:
-                    values = [(f, f.get_db_prep_save(raw and getattr(self, f.attname) or f.pre_save(self, True), connection=connection))
+                    values = [(f, f.get_db_prep_save(raw and getattr(self, f.attname) or f.pre_save(self, add), connection=connection))
                         for f in meta.local_fields]
 
                 record_exists = False
@@ -574,11 +581,12 @@ class Model(object):
             if connection.features.distinguishes_insert_from_update:
                 created = not record_exists
             else:
-                created = not self._entity_exists
+                created = not entity_exists
             signals.post_save.send(sender=origin, instance=self,
                 created=created, raw=raw, using=using)
 
         self._entity_exists = True
+        self._original_pk = self.pk
 
     save_base.alters_data = True
 
@@ -591,6 +599,7 @@ class Model(object):
         collector.delete()
 
         self._entity_exists = False
+        self._original_pk = None
 
     delete.alters_data = True
 

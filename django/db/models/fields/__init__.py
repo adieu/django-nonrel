@@ -633,8 +633,7 @@ class DateField(Field):
             raise exceptions.ValidationError(msg)
 
     def pre_save(self, model_instance, add):
-        old_value = getattr(model_instance, self.attname)
-        if self.auto_now or (not old_value and self.auto_now_add and add):
+        if self.auto_now or (self.auto_now_add and add):
             value = datetime.date.today()
             setattr(model_instance, self.attname, value)
             return value
@@ -723,8 +722,7 @@ class DateTimeField(DateField):
                     raise exceptions.ValidationError(self.error_messages['invalid'])
 
     def pre_save(self, model_instance, add):
-        old_value = getattr(model_instance, self.attname)
-        if self.auto_now or (not old_value and self.auto_now_add and add):
+        if self.auto_now or (self.auto_now_add and add):
             value = datetime.datetime.now()
             setattr(model_instance, self.attname, value)
             return value
@@ -1009,6 +1007,7 @@ class PositiveIntegerField(IntegerField):
 
 class PositiveSmallIntegerField(IntegerField):
     description = _("Integer")
+
     def related_db_type(self, connection):
         if not connection.features.related_fields_match_type:
             return IntegerField().related_db_type(connection=connection)
@@ -1113,8 +1112,7 @@ class TimeField(Field):
                 raise exceptions.ValidationError(self.error_messages['invalid'])
 
     def pre_save(self, model_instance, add):
-        old_value = getattr(model_instance, self.attname)
-        if self.auto_now or (not old_value and self.auto_now_add and add):
+        if self.auto_now or (self.auto_now_add and add):
             value = datetime.datetime.now().time()
             setattr(model_instance, self.attname, value)
             return value
