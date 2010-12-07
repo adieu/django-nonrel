@@ -13,7 +13,6 @@ from django.db.models.query_utils import QueryWrapper
 from django.conf import settings
 from django import forms
 from django.core import exceptions, validators
-from django.utils.datastructures import DictWrapper
 from django.utils.functional import curry
 from django.utils.text import capfirst
 from django.utils.translation import ugettext_lazy as _
@@ -215,15 +214,11 @@ class Field(object):
         # mapped to one of the built-in Django field types. In this case, you
         # can implement db_type() instead of get_internal_type() to specify
         # exactly which wacky database column type you want to use.
-        data = DictWrapper(self.__dict__, connection.ops.quote_name, "qn_")
-        try:
-            return connection.creation.data_types[self.get_internal_type()] % data
-        except KeyError:
-            return None
+        return connection.creation.db_type(self)
 
     def related_db_type(self, connection):
         # This is the db_type used by a ForeignKey.
-        return self.db_type(connection=connection)
+        return connection.creation.related_db_type(self)
 
     def unique(self):
         return self._unique or self.primary_key
@@ -255,6 +250,9 @@ class Field(object):
 
     def get_internal_type(self):
         return self.__class__.__name__
+
+    def get_related_internal_type(self):
+        return self.get_internal_type()
 
     def pre_save(self, model_instance, add):
         "Returns field's value just before saving."
@@ -466,13 +464,14 @@ class AutoField(Field):
     def get_internal_type(self):
         return "AutoField"
 
-    def related_db_type(self, connection):
-        data = DictWrapper(self.__dict__, connection.ops.quote_name, "qn_")
+    def get_related_internal_type(self):
+        return "RelatedAutoField"
 
-        try:
-            return connection.creation.data_types['RelatedAutoField'] % data
-        except KeyError:
+    def related_db_type(self, connection):
+        db_type = super(AutoField, self).related_db_type(connection=connection)
+        if db_type is None:
             return IntegerField().db_type(connection=connection)
+        return db_type
 
     def to_python(self, value):
         if not (value is None or isinstance(value, (basestring, int, long))):
@@ -996,7 +995,7 @@ class PositiveIntegerField(IntegerField):
 
     def related_db_type(self, connection):
         if not connection.features.related_fields_match_type:
-            return IntegerField().db_type(connection=connection)
+            return IntegerField().related_db_type(connection=connection)
         return super(PositiveIntegerField, self).related_db_type(
             connection=connection)
 
@@ -1012,7 +1011,7 @@ class PositiveSmallIntegerField(IntegerField):
     description = _("Integer")
     def related_db_type(self, connection):
         if not connection.features.related_fields_match_type:
-            return IntegerField().db_type(connection=connection)
+            return IntegerField().related_db_type(connection=connection)
         return super(PositiveSmallIntegerField, self).related_db_type(
             connection=connection)
 
