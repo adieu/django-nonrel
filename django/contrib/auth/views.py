@@ -13,7 +13,7 @@ from django.shortcuts import render_to_response, get_object_or_404
 from django.contrib.sites.models import get_current_site
 from django.http import HttpResponseRedirect, Http404
 from django.template import RequestContext
-from django.utils.http import urlquote, base36_to_int
+from django.utils.http import urlquote, urlsafe_base64_decode
 from django.utils.translation import ugettext as _
 from django.contrib.auth.models import User
 from django.views.decorators.cache import never_cache
@@ -131,19 +131,19 @@ def password_reset_done(request, template_name='registration/password_reset_done
     return render_to_response(template_name, context_instance=RequestContext(request))
 
 # Doesn't need csrf_protect since no-one can guess the URL
-def password_reset_confirm(request, uidb36=None, token=None, template_name='registration/password_reset_confirm.html',
+def password_reset_confirm(request, uidb64=None, token=None, template_name='registration/password_reset_confirm.html',
                            token_generator=default_token_generator, set_password_form=SetPasswordForm,
                            post_reset_redirect=None):
     """
     View that checks the hash in a password reset link and presents a
     form for entering a new password.
     """
-    assert uidb36 is not None and token is not None # checked by URLconf
+    assert uidb64 is not None and token is not None # checked by URLconf
     if post_reset_redirect is None:
         post_reset_redirect = reverse('django.contrib.auth.views.password_reset_complete')
     try:
-        uid_int = base36_to_int(uidb36)
-        user = User.objects.get(id=uid_int)
+        uid = urlsafe_base64_decode(str(uidb64))
+        user = User.objects.get(id=uid)
     except (ValueError, User.DoesNotExist):
         user = None
 
