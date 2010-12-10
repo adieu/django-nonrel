@@ -1277,6 +1277,7 @@ def get_cached_row(klass, row, index_start, using, max_depth=0, cur_depth=0,
                                     pass
     return obj, index_end
 
+
 class RawQuerySet(object):
     """
     Provides an iterator which converts the results of raw SQL queries into

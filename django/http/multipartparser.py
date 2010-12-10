@@ -170,6 +170,8 @@ class MultiPartParser(object):
 
                     content_type = meta_data.get('content-type', ('',))[0].strip()
                     content_type_extra = meta_data.get('content-type', (0,{}))[1]
+                    if content_type_extra is None:
+                        content_type_extra = {}
                     try:
                         charset = content_type_extra.get('charset', None)
                     except:
@@ -186,7 +188,7 @@ class MultiPartParser(object):
                             try:
                                 handler.new_file(field_name, file_name,
                                                  content_type, content_length,
-                                                 charset, content_type_extra)
+                                                 charset, content_type_extra.copy())
                             except StopFutureHandlers:
                                 break
 
