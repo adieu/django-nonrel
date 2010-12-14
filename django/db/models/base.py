@@ -358,7 +358,7 @@ class Model(object):
                     pass
             if kwargs:
                 raise TypeError("'%s' is an invalid keyword argument for this function" % kwargs.keys()[0])
-        self._original_pk = self.pk
+        self._original_pk = self.pk if self._meta.pk is not None else None
         signals.post_init.send(sender=self.__class__, instance=self)
 
     def __repr__(self):
