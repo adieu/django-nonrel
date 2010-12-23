@@ -232,7 +232,7 @@ class MailTests(TestCase):
         self.assertEqual(len(mail.outbox), 2)
         self.assertEqual(mail.outbox[0].subject, 'Subject')
         self.assertEqual(mail.outbox[1].subject, 'Subject 2')
-        
+
         # Make sure that multiple locmem connections share mail.outbox
         mail.outbox = []
         connection2 = locmem.EmailBackend()
@@ -364,6 +364,36 @@ class MailTests(TestCase):
         settings.ADMINS = old_admins
         settings.MANAGERS = old_managers
 
+    def test_html_mail_admins(self):
+        """Test html_message argument to mail_admins and mail_managers"""
+        old_admins = settings.ADMINS
+        settings.ADMINS = [('nobody','nobody@example.com')]
+
+        mail.outbox = []
+        mail_admins('Subject', 'Content', html_message='HTML Content')
+        self.assertEqual(len(mail.outbox), 1)
+        message = mail.outbox[0]
+        self.assertEqual(message.subject, '[Django] Subject')
+        self.assertEqual(message.body, 'Content')
+        self.assertEqual(message.alternatives, [('HTML Content', 'text/html')])
+
+        settings.ADMINS = old_admins
+
+    def test_html_mail_managers(self):
+        """Test html_message argument to mail_admins and mail_managers"""
+        old_managers = settings.MANAGERS
+        settings.MANAGERS = [('nobody','nobody@example.com')]
+
+        mail.outbox = []
+        mail_managers('Subject', 'Content', html_message='HTML Content')
+        self.assertEqual(len(mail.outbox), 1)
+        message = mail.outbox[0]
+        self.assertEqual(message.subject, '[Django] Subject')
+        self.assertEqual(message.body, 'Content')
+        self.assertEqual(message.alternatives, [('HTML Content', 'text/html')])
+
+        settings.MANAGERS = old_managers
+
     def test_idn_validation(self):
         """Test internationalized email adresses"""
         # Regression for #14301.
@@ -378,3 +408,25 @@ class MailTests(TestCase):
         self.assertEqual(message.from_email, from_email)
         self.assertEqual(message.to, [to_email])
         self.assertTrue(message.message().as_string().startswith('Content-Type: text/plain; charset="utf-8"\nMIME-Version: 1.0\nContent-Transfer-Encoding: quoted-printable\nSubject: Subject\nFrom: =?utf-8?b?ZnLDtm1Aw7bDpMO8LmNvbQ==?=\nTo: =?utf-8?b?dMO2QMO2w6TDvC5jb20=?='))
+
+    def test_idn_smtp_send(self):
+        import smtplib
+        smtplib.SMTP = MockSMTP
+        from_email = u'fröm@öäü.com'
+        to_email = u'tö@öäü.com'
+        connection = mail.get_connection('django.core.mail.backends.smtp.EmailBackend')
+        self.assertTrue(send_mail('Subject', 'Content', from_email, [to_email], connection=connection))
+
+class MockSMTP(object):
+    def __init__(self, host='', port=0, local_hostname=None,
+                 timeout=1):
+        pass
+
+    def sendmail(self, from_addr, to_addrs, msg, mail_options=[],
+                 rcpt_options=[]):
+        for addr in to_addrs:
+            str(addr.split('@', 1)[-1])
+        return {}
+
+    def quit(self):
+        return 0

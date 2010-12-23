@@ -83,10 +83,7 @@ class VersionDirective(Directive):
         if not is_nextversion:
             if len(self.arguments) == 1:
                 linktext = 'Please, see the release notes </releases/%s>' % (arg0)
-                try:
-                    xrefs = roles.XRefRole()('doc', linktext, linktext, self.lineno, self.state) # Sphinx >= 1.0
-                except AttributeError:
-                    xrefs = roles.xfileref_role('doc', linktext, linktext, self.lineno, self.state) # Sphinx < 1.0
+                xrefs = roles.XRefRole()('doc', linktext, linktext, self.lineno, self.state)
                 node.extend(xrefs[0])
             node['version'] = arg0
         else:
@@ -196,10 +193,7 @@ def parse_django_admin_node(env, sig, signode):
 
 def parse_django_adminopt_node(env, sig, signode):
     """A copy of sphinx.directives.CmdoptionDesc.parse_signature()"""
-    try:
-        from sphinx.domains.std import option_desc_re # Sphinx >= 1.0
-    except ImportError:
-        from sphinx.directives.desc import option_desc_re # Sphinx < 1.0
+    from sphinx.domains.std import option_desc_re
     count = 0
     firstname = ''
     for m in option_desc_re.finditer(sig):
@@ -239,18 +233,13 @@ class DjangoStandaloneHTMLBuilder(StandaloneHTMLBuilder):
             self.warn("cannot create templatebuiltins.js due to missing simplejson dependency")
             return
         self.info(bold("writing templatebuiltins.js..."))
-        try:
-            xrefs = self.env.reftargets.items()
-            templatebuiltins = dict([('ttags', [n for ((t,n),(l,a)) in xrefs
-                                                if t == 'ttag' and
-                                                l == 'ref/templates/builtins']),
-                                     ('tfilters', [n for ((t,n),(l,a)) in xrefs
-                                                   if t == 'tfilter' and
-                                                   l == 'ref/templates/builtins'])])
-        except AttributeError:
-            xrefs = self.env.domaindata["std"]["objects"]
-            templatebuiltins = dict([('ttags', [n for (t,n) in xrefs if t == 'templatetag']),
-                                     ('tfilters', [n for (t,n) in xrefs if t == 'templatefilter'])])
+        xrefs = self.env.domaindata["std"]["objects"]
+        templatebuiltins = {
+            "ttags": [n for ((t, n), (l, a)) in xrefs.items()
+                        if t == "templatetag" and l == "ref/templates/builtins"],
+            "tfilters": [n for ((t, n), (l, a)) in xrefs.items()
+                        if t == "templatefilter" and l == "ref/templates/builtins"],
+        }
         outfilename = os.path.join(self.outdir, "templatebuiltins.js")
         f = open(outfilename, 'wb')
         f.write('var django_template_builtins = ')

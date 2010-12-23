@@ -1,16 +1,22 @@
 import os
 
-from django import forms
-from django import http
+from django import forms, http
 from django.conf import settings
 from django.contrib.formtools import preview, wizard, utils
 from django.test import TestCase
 from django.utils import unittest
 
+
 success_string = "Done was called!"
 
-
 class TestFormPreview(preview.FormPreview):
+    def get_context(self, request, form):
+        context = super(TestFormPreview, self).get_context(request, form)
+        context.update({'custom_context': True})
+        return context
+
+    def get_initial(self, request):
+        return {'field1': 'Works!'}
 
     def done(self, request, cleaned_data):
         return http.HttpResponse(success_string)
@@ -59,6 +65,8 @@ class PreviewTests(TestCase):
         response = self.client.get('/test1/')
         stage = self.input % 1
         self.assertContains(response, stage, 1)
+        self.assertEquals(response.context['custom_context'], True)
+        self.assertEquals(response.context['form'].initial, {'field1': 'Works!'})
 
     def test_form_preview(self):
         """
@@ -91,7 +99,7 @@ class PreviewTests(TestCase):
         # show we previously saw first stage of the form.
         self.test_data.update({'stage':2})
         response = self.client.post('/test1/', self.test_data)
-        self.failIfEqual(response.content, success_string)
+        self.assertNotEqual(response.content, success_string)
         hash = self.preview.security_hash(None, TestForm(self.test_data))
         self.test_data.update({'hash': hash})
         response = self.client.post('/test1/', self.test_data)
@@ -125,7 +133,7 @@ class PreviewTests(TestCase):
         # show we previously saw first stage of the form.
         self.test_data.update({'stage':2})
         response = self.client.post('/test1/', self.test_data)
-        self.failIfEqual(response.content, success_string)
+        self.assertNotEqual(response.content, success_string)
         hash = utils.security_hash(None, TestForm(self.test_data))
         self.test_data.update({'hash': hash})
         response = self.client.post('/test1/', self.test_data)
@@ -142,11 +150,11 @@ class PreviewTests(TestCase):
         self.test_data.update({'stage':2})
         response = self.client.post('/test2/', self.test_data)
         self.assertEqual(response.status_code, 200)
-        self.failIfEqual(response.content, success_string)
+        self.assertNotEqual(response.content, success_string)
         hash = utils.security_hash(None, TestForm(self.test_data))
         self.test_data.update({'hash': hash})
         response = self.client.post('/test2/', self.test_data)
-        self.failIfEqual(response.content, success_string)
+        self.assertNotEqual(response.content, success_string)
 
 
 class SecurityHashTests(unittest.TestCase):
@@ -360,3 +368,26 @@ class WizardTests(TestCase):
                 "wizard_step": "1"}
         wizard(DummyRequest(POST=data))
 
+    def test_14576(self):
+        """
+        Regression test for ticket #14576.
+
+        The form of the last step is not passed to the done method.
+        """
+        reached = [False]
+        that = self
+
+        class Wizard(WizardClass):
+            def done(self, request, form_list):
+                reached[0] = True
+                that.assertTrue(len(form_list) == 2)
+
+        wizard = Wizard([WizardPageOneForm,
+                         WizardPageTwoForm])
+
+        data = {"0-field": "test",
+                "1-field": "test2",
+                "hash_0": "2fdbefd4c0cad51509478fbacddf8b13",
+                "wizard_step": "1"}
+        wizard(DummyRequest(POST=data))
+        self.assertTrue(reached[0])

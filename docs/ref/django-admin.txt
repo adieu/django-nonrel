@@ -491,6 +491,10 @@ several lines in language files.
 reset <appname appname ...>
 ---------------------------
 
+.. deprecated:: 1.3
+    This command has been deprecated. The ``flush`` can be used to delete
+    everything. You can also use ALTER TABLE or DROP TABLE statements manually.
+
 .. django-admin:: reset
 
 Executes the equivalent of ``sqlreset`` for the given app name(s).
@@ -630,7 +634,7 @@ runserver [port or ipaddr:port]
 .. django-admin:: runserver
 
 Starts a lightweight development Web server on the local machine. By default,
-the server runs on port 8000 on the IP address 127.0.0.1. You can pass in an
+the server runs on port 8000 on the IP address ``127.0.0.1``. You can pass in an
 IP address and port number explicitly.
 
 If you run this script as a user with normal privileges (recommended), you
@@ -654,10 +658,15 @@ them to standard output, but it won't stop the server.
 You can run as many servers as you want, as long as they're on separate ports.
 Just execute ``django-admin.py runserver`` more than once.
 
-Note that the default IP address, 127.0.0.1, is not accessible from other
+Note that the default IP address, ``127.0.0.1``, is not accessible from other
 machines on your network. To make your development server viewable to other
 machines on the network, use its own IP address (e.g. ``192.168.2.1``) or
-``0.0.0.0``.
+``0.0.0.0`` or ``::`` (with IPv6 enabled).
+
+.. versionchanged:: 1.3
+
+You can also provide an IPv6 address surrounded by brackets
+(eg. ``[200a::1]:8000``). This will automaticaly enable IPv6 support.
 
 .. django-admin-option:: --adminmedia
 
@@ -681,53 +690,48 @@ Example usage::
 
     django-admin.py runserver --noreload
 
-.. django-admin-option:: --nostatic
+.. django-admin-option:: --ipv6, -6
 
-Use the ``--nostatic`` option to disable serving of static files with the
-:doc:`staticfiles </ref/contrib/staticfiles>` app entirely. This option is
-only available if the :doc:`staticfiles </ref/contrib/staticfiles>` app is
-in your project's :setting:`INSTALLED_APPS` setting.
+.. versionadded:: 1.3
 
-Example usage::
-
-    django-admin.py runserver --nostatic
-
-.. django-admin-option:: --insecure
-
-Use the ``--insecure`` option to force serving of static files with the
-:doc:`staticfiles </ref/contrib/staticfiles>` app even if the :setting:`DEBUG`
-setting is ``False``. By using this you acknowledge the fact that it's
-**grossly inefficient** and probably **insecure**. This is only intended for
-local development, should **never be used in production** and is only
-available if the :doc:`staticfiles </ref/contrib/staticfiles>` app is
-in your project's :setting:`INSTALLED_APPS` setting.
-
-See the :doc:`reference documentation of the app </ref/contrib/staticfiles>`
-for more details and learn how to :doc:`manage and deploy static files
-</howto/static-files>` correctly.
+Use the ``--ipv6`` (or shorter ``-6``) option to tell Django to use IPv6 for
+the development server. This changes the default IP address from
+``127.0.0.1`` to ``::1``.
 
 Example usage::
 
-    django-admin.py runserver --insecure
+    django-admin.py runserver --ipv6
 
 Examples of using different ports and addresses
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Port 8000 on IP address 127.0.0.1::
+Port 8000 on IP address ``127.0.0.1``::
 
-	django-admin.py runserver
+    django-admin.py runserver
 
-Port 8000 on IP address 1.2.3.4::
+Port 8000 on IP address ``1.2.3.4``::
 
-	django-admin.py runserver 1.2.3.4:8000
+    django-admin.py runserver 1.2.3.4:8000
 
-Port 7000 on IP address 127.0.0.1::
+Port 7000 on IP address ``127.0.0.1``::
 
     django-admin.py runserver 7000
 
-Port 7000 on IP address 1.2.3.4::
+Port 7000 on IP address ``1.2.3.4``::
 
     django-admin.py runserver 1.2.3.4:7000
+
+Port 8000 on IPv6 address ``::1``::
+
+    django-admin.py runserver -6
+
+Port 7000 on IPv6 address ``::1``::
+
+    django-admin.py runserver -6 7000
+
+Port 7000 on IPv6 address ``2001:0db8:1234:5678::9``::
+
+    django-admin.py runserver [2001:0db8:1234:5678::9]:7000
 
 Serving static files with the development server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -743,13 +747,14 @@ shell
 
 Starts the Python interactive interpreter.
 
-Django will use IPython_, if it's installed. If you have IPython installed and
-want to force use of the "plain" Python interpreter, use the ``--plain``
-option, like so::
+Django will use IPython_ or bpython_ if either is installed. If you have a
+rich shell installed but want to force use of the "plain" Python interpreter,
+use the ``--plain`` option, like so::
 
     django-admin.py shell --plain
 
 .. _IPython: http://ipython.scipy.org/
+.. _bpython: http://bpython-interpreter.org/
 
 sql <appname appname ...>
 -------------------------
@@ -843,6 +848,10 @@ which to print the SQL.
 
 sqlreset <appname appname ...>
 ------------------------------
+
+.. deprecated:: 1.3
+    This command has been deprecated. The ``sqlflush`` can be used to delete
+    everything. You can also use ALTER TABLE or DROP TABLE statements manually.
 
 .. django-admin:: sqlreset
 
@@ -992,7 +1001,7 @@ templates.
 .. django-admin-option:: --addrport [port number or ipaddr:port]
 
 Use ``--addrport`` to specify a different port, or IP address and port, from
-the default of 127.0.0.1:8000. This value follows exactly the same format and
+the default of ``127.0.0.1:8000``. This value follows exactly the same format and
 serves exactly the same function as the argument to the ``runserver`` command.
 
 Examples:
@@ -1338,3 +1347,27 @@ distribution. It enables tab-completion of ``django-admin.py`` and
 
 
 See :doc:`/howto/custom-management-commands` for how to add customized actions.
+
+
+==========================================
+Running management commands from your code
+==========================================
+
+.. function:: django.core.management.call_command(name, *args, **options)
+
+To call a management command from code use ``call_command``.
+
+``name``
+  the name of the command to call.
+
+``*args``
+  a list of arguments accepted by the command.
+
+``**options``
+  named options accepted on the command-line.
+
+Examples::
+
+      from django.core import management
+      management.call_command('flush', verbosity=0, interactive=False)
+      management.call_command('loaddata', 'test_data', verbosity=0)

@@ -11,6 +11,7 @@ class BaseDatabaseWrapper(local):
     Represents a database connection.
     """
     ops = None
+    vendor = 'unknown'
 
     def __init__(self, settings_dict, alias=DEFAULT_DB_ALIAS):
         # `settings_dict` should be a dictionary containing keys such as
@@ -20,11 +21,10 @@ class BaseDatabaseWrapper(local):
         self.queries = []
         self.settings_dict = settings_dict
         self.alias = alias
-        self.vendor = 'unknown'
         self.use_debug_cursor = None
 
     def __eq__(self, other):
-        return self.settings_dict == other.settings_dict
+        return self.alias == other.alias
 
     def __ne__(self, other):
         return not self == other
@@ -103,6 +103,8 @@ class BaseDatabaseFeatures(object):
     # integer primary keys.
     related_fields_match_type = False
     allow_sliced_subqueries = True
+
+    supports_joins = True
     distinguishes_insert_from_update = True
     supports_deleting_related_objects = True
     supports_select_related = True
@@ -156,6 +158,9 @@ class BaseDatabaseFeatures(object):
     # Do we need to NULL a ForeignKey out, or can the constraint check be
     # deferred
     can_defer_constraint_checks = False
+
+    # date_interval_sql can properly handle mixed Date/DateTime fields and timedeltas
+    supports_mixed_date_datetime_comparisons = True
 
     # Features that need to be confirmed at runtime
     # Cache whether the confirmation has been performed.
@@ -220,6 +225,12 @@ class BaseDatabaseOperations(object):
         """
         Given a lookup_type of 'year', 'month' or 'day', returns the SQL that
         extracts a value from the given date field field_name.
+        """
+        raise NotImplementedError()
+
+    def date_interval_sql(self, sql, connector, timedelta):
+        """
+        Implements the date interval functionality for expressions
         """
         raise NotImplementedError()
 

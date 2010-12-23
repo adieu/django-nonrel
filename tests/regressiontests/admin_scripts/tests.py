@@ -12,6 +12,7 @@ from django import conf, bin, get_version
 from django.conf import settings
 from django.utils import unittest
 
+
 class AdminScriptTestCase(unittest.TestCase):
     def write_settings(self, filename, apps=None, is_dir=False, sdict=None):
         test_dir = os.path.dirname(os.path.dirname(__file__))
@@ -118,6 +119,7 @@ class AdminScriptTestCase(unittest.TestCase):
             from subprocess import Popen, PIPE
             p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
             stdin, stdout, stderr = (p.stdin, p.stdout, p.stderr)
+            p.wait()
         except ImportError:
             stdin, stdout, stderr = os.popen3(cmd)
         out, err = stdout.read(), stderr.read()
@@ -156,7 +158,7 @@ class AdminScriptTestCase(unittest.TestCase):
         self.assertEquals(len(stream), 0, "Stream should be empty: actually contains '%s'" % stream)
     def assertOutput(self, stream, msg):
         "Utility assertion: assert that the given message exists in the output"
-        self.failUnless(msg in stream, "'%s' does not match actual output text '%s'" % (msg, stream))
+        self.assertTrue(msg in stream, "'%s' does not match actual output text '%s'" % (msg, stream))
 
 ##########################################################################
 # DJANGO ADMIN TESTS

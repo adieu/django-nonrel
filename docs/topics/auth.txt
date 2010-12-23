@@ -212,7 +212,7 @@ Methods
 
     .. method:: models.User.get_group_permissions(obj=None)
 
-        Returns a list of permission strings that the user has, through his/her
+        Returns a set of permission strings that the user has, through his/her
         groups.
 
         .. versionadded:: 1.2
@@ -222,7 +222,7 @@ Methods
 
     .. method:: models.User.get_all_permissions(obj=None)
 
-        Returns a list of permission strings that the user has, both through
+        Returns a set of permission strings that the user has, both through
         group and user permissions.
 
         .. versionadded:: 1.2
@@ -665,6 +665,44 @@ How to log a user out
     immediately after logging out, do that *after* calling
     :func:`django.contrib.auth.logout()`.
 
+.. _topics-auth-signals:
+
+Login and logout signals
+------------------------
+
+The auth framework uses two :ref:`signals <topic-signals>` that can be used for
+notification when a user logs in or out.
+
+**:data:`django.contrib.auth.signals.user_logged_in`**
+
+Sent when a user logs in successfully.
+
+Arguments sent with this signal:
+
+    ``sender``
+        As above: the class of the user that just logged in.
+
+    ``request``
+        The current :class:`~django.http.HttpRequest` instance.
+
+    ``user``
+        The user instance that just logged in.
+
+**:data:`django.contrib.auth.signals.user_logged_out`**
+
+Sent when the logout method is called.
+
+    ``sender``
+        As above: the class of the user that just logged out or ``None``
+        if the user was not authenticated.
+
+    ``request``
+        The current :class:`~django.http.HttpRequest` instance.
+
+    ``user``
+        The user instance that just logged out or ``None`` if the
+        user was not authenticated.
+
 Limiting access to logged-in users
 ----------------------------------
 
@@ -703,7 +741,7 @@ The login_required decorator
         @login_required
         def my_view(request):
             ...
-    
+
     :func:`~django.contrib.auth.decorators.login_required` does the following:
 
     * If the user isn't logged in, redirect to
@@ -802,6 +840,7 @@ The login_required decorator
     .. code-block:: html+django
 
         {% extends "base.html" %}
+        {% load url from future %}
 
         {% block content %}
 
@@ -809,7 +848,7 @@ The login_required decorator
         <p>Your username and password didn't match. Please try again.</p>
         {% endif %}
 
-        <form method="post" action="{% url django.contrib.auth.views.login %}">
+        <form method="post" action="{% url 'django.contrib.auth.views.login' %}">
         {% csrf_token %}
         <table>
         <tr>
@@ -1605,6 +1644,31 @@ warning will be upgraded to a ``DeprecationWarning``, which will be displayed
 loudly. Additionally ``supports_anonymous_user`` will be set to ``False``.
 Django 1.4 will assume that every backend supports anonymous users being
 passed to the authorization methods.
+
+Authorization for inactive users
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 1.3
+
+An inactive user is a one that is authenticated but has its attribute
+``is_active`` set to ``False``. However this does not mean they are not
+authrozied to do anything. For example they are allowed to activate their
+account.
+
+The support for anonymous users in the permission system allows for
+anonymous users to have permissions to do something while inactive
+authenticated users do not.
+
+To enable this on your own backend, you must set the class attribute
+``supports_inactive_user`` to ``True``.
+
+A nonexisting ``supports_inactive_user`` attribute will raise a
+``PendingDeprecationWarning`` if used in Django 1.3. In Django 1.4, this
+warning will be updated to a ``DeprecationWarning`` which will be displayed
+loudly. Additionally ``supports_inactive_user`` will be set to ``False``.
+Django 1.5 will assume that every backend supports inactive users being
+passed to the authorization methods.
+
 
 Handling object permissions
 ---------------------------

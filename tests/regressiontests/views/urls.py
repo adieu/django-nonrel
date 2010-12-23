@@ -16,6 +16,11 @@ js_info_dict = {
     'packages': ('regressiontests.views',),
 }
 
+js_info_dict_english_translation = {
+    'domain': 'djangojs',
+    'packages': ('regressiontests.views.app0',),
+}
+
 js_info_dict_multi_packages1 = {
     'domain': 'djangojs',
     'packages': ('regressiontests.views.app1', 'regressiontests.views.app2'),
@@ -56,6 +61,7 @@ urlpatterns = patterns('',
     # i18n views
     (r'^i18n/', include('django.conf.urls.i18n')),
     (r'^jsi18n/$', 'django.views.i18n.javascript_catalog', js_info_dict),
+    (r'^jsi18n_english_translation/$', 'django.views.i18n.javascript_catalog', js_info_dict_english_translation),
     (r'^jsi18n_multi_packages1/$', 'django.views.i18n.javascript_catalog', js_info_dict_multi_packages1),
     (r'^jsi18n_multi_packages2/$', 'django.views.i18n.javascript_catalog', js_info_dict_multi_packages2),
 
@@ -137,6 +143,15 @@ urlpatterns += patterns('django.views.generic.simple',
 urlpatterns += patterns('regressiontests.views.views',
     url(r'view_exception/(?P<n>\d+)/$', 'view_exception', name='view_exception'),
     url(r'template_exception/(?P<n>\d+)/$', 'template_exception', name='template_exception'),
+
+    (r'^shortcuts/render_to_response/$', 'render_to_response_view'),
+    (r'^shortcuts/render_to_response/request_context/$', 'render_to_response_view_with_request_context'),
+    (r'^shortcuts/render_to_response/mimetype/$', 'render_to_response_view_with_mimetype'),
+    (r'^shortcuts/render/$', 'render_view'),
+    (r'^shortcuts/render/base_context/$', 'render_view_with_base_context'),
+    (r'^shortcuts/render/content_type/$', 'render_view_with_content_type'),
+    (r'^shortcuts/render/status/$', 'render_view_with_status'),
+
 )
 
 # simple generic views.

@@ -1,11 +1,12 @@
-import unittest
 from datetime import date
 
 from django import forms
-from django.forms.models import modelform_factory, ModelChoiceField, fields_for_model, construct_instance
-from django.test import TestCase
 from django.core.exceptions import FieldError, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.forms.models import (modelform_factory, ModelChoiceField,
+    fields_for_model, construct_instance)
+from django.utils import unittest
+from django.test import TestCase
 
 from models import Person, RealPerson, Triple, FilePathModel, Article, \
     Publication, CustomFF, Author, Author1, Homepage, Document, Edition
@@ -23,6 +24,23 @@ class ModelMultipleChoiceFieldTests(TestCase):
         f = forms.ModelMultipleChoiceField(queryset=Person.objects.all())
         self.assertNumQueries(1, f.clean, [1, 3, 5, 7, 9])
 
+    def test_model_multiple_choice_run_validators(self):
+        """
+        Test that ModelMultipleChoiceField run given validators (#14144).
+        """
+        for i in range(30):
+            Person.objects.create(name="Person %s" % i)
+
+        self._validator_run = False
+        def my_validator(value):
+            self._validator_run = True
+
+        f = forms.ModelMultipleChoiceField(queryset=Person.objects.all(),
+                                           validators=[my_validator])
+
+        f.clean([p.pk for p in Person.objects.all()[8:9]])
+        self.assertTrue(self._validator_run)
+
 class TripleForm(forms.ModelForm):
     class Meta:
         model = Triple
@@ -38,10 +56,10 @@ class UniqueTogetherTests(TestCase):
         Triple.objects.create(left=1, middle=2, right=3)
 
         form = TripleForm({'left': '1', 'middle': '2', 'right': '3'})
-        self.failIf(form.is_valid())
+        self.assertFalse(form.is_valid())
 
         form = TripleForm({'left': '1', 'middle': '3', 'right': '1'})
-        self.failUnless(form.is_valid())
+        self.assertTrue(form.is_valid())
 
 class TripleFormWithCleanOverride(forms.ModelForm):
     class Meta:
@@ -59,7 +77,7 @@ class OverrideCleanTests(TestCase):
         optional.
         """
         form = TripleFormWithCleanOverride({'left': 1, 'middle': 2, 'right': 1})
-        self.failUnless(form.is_valid())
+        self.assertTrue(form.is_valid())
         # form.instance.left will be None if the instance was not constructed
         # by form.full_clean().
         self.assertEquals(form.instance.left, 1)

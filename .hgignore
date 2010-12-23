@@ -1,12 +1,13 @@
 syntax: glob
 *~
-*.pyc
-*.pyo
 *.tmp
 *.swp
+*.egg-info
+*.pot
+*.py[co]
+docs/_build/
 *.orig
 desktop.ini
 nbproject
-docs/_build/*
 tests/django
 build

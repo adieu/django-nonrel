@@ -254,10 +254,8 @@ class BaseModelForm(BaseForm):
             # if we didn't get an instance, instantiate a new one
             self.instance = opts.model()
             object_data = {}
-            self.instance._adding = True
         else:
             self.instance = instance
-            self.instance._adding = False
             object_data = model_to_dict(instance, opts.fields, opts.exclude)
         # if initial was provided, it should override the values from instance
         if initial is not None:
@@ -1047,6 +1045,9 @@ class ModelMultipleChoiceField(ModelChoiceField):
         for val in value:
             if force_unicode(val) not in pks:
                 raise ValidationError(self.error_messages['invalid_choice'] % val)
+        # Since this overrides the inherited ModelChoiceField.clean
+        # we run custom validators here
+        self.run_validators(value)
         return qs
 
     def prepare_value(self, value):

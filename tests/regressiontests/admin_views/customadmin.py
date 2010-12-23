@@ -5,9 +5,10 @@ from django.conf.urls.defaults import patterns
 from django.contrib import admin
 from django.http import HttpResponse
 
-import models
+import models, forms
 
 class Admin2(admin.AdminSite):
+    login_form = forms.CustomAdminAuthenticationForm
     login_template = 'custom_admin/login.html'
     logout_template = 'custom_admin/logout.html'
     index_template = 'custom_admin/index.html'
@@ -32,3 +33,4 @@ site.register(models.Article, models.ArticleAdmin)
 site.register(models.Section, inlines=[models.ArticleInline])
 site.register(models.Thing, models.ThingAdmin)
 site.register(models.Fabric, models.FabricAdmin)
+site.register(models.ChapterXtra1, models.ChapterXtra1Admin)

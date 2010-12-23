@@ -196,7 +196,7 @@ def make_messages(locale=None, domain='django', verbosity='1', all=False,
                     'xgettext -d %s -L Perl %s --keyword=gettext_noop '
                     '--keyword=gettext_lazy --keyword=ngettext_lazy:1,2 '
                     '--keyword=pgettext:1c,2 --keyword=npgettext:1c,2,3 '
-                    '--from-code UTF-8 -o - "%s"' % (
+                    '--from-code UTF-8 --add-comments=Translators -o - "%s"' % (
                         domain, wrap, os.path.join(dirpath, thefile)
                     )
                 )
@@ -220,18 +220,15 @@ def make_messages(locale=None, domain='django', verbosity='1', all=False,
                 os.unlink(os.path.join(dirpath, thefile))
             elif domain == 'django' and (file_ext == '.py' or file_ext in extensions):
                 thefile = file
+                orig_file = os.path.join(dirpath, file)
                 if file_ext in extensions:
-                    src = open(os.path.join(dirpath, file), "rU").read()
+                    src = open(orig_file, "rU").read()
                     thefile = '%s.py' % file
+                    f = open(os.path.join(dirpath, thefile), "w")
                     try:
-                        f = open(os.path.join(dirpath, thefile), "w")
-                        try:
-                            f.write(templatize(src))
-                        finally:
-                            f.close()
-                    except SyntaxError, msg:
-                        msg = "%s (file: %s)" % (msg, os.path.join(dirpath, file))
-                        raise SyntaxError(msg)
+                        f.write(templatize(src, orig_file[2:]))
+                    finally:
+                        f.close()
                 if verbosity > 1:
                     sys.stdout.write('processing file %s in %s\n' % (file, dirpath))
                 cmd = (
@@ -240,8 +237,9 @@ def make_messages(locale=None, domain='django', verbosity='1', all=False,
                     '--keyword=ugettext_noop --keyword=ugettext_lazy '
                     '--keyword=ungettext_lazy:1,2 --keyword=pgettext:1c,2 '
                     '--keyword=npgettext:1c,2,3 --keyword=pgettext_lazy:1c,2 '
-                    '--keyword=npgettext_lazy:1c,2,3 --from-code UTF-8 -o - '
-                    '"%s"' % (domain, wrap, os.path.join(dirpath, thefile))
+                    '--keyword=npgettext_lazy:1c,2,3 --from-code UTF-8 '
+                    '--add-comments=Translators -o - "%s"' % (
+                        domain, wrap, os.path.join(dirpath, thefile))
                 )
                 msgs, errors = _popen(cmd)
                 if errors:
@@ -249,7 +247,7 @@ def make_messages(locale=None, domain='django', verbosity='1', all=False,
 
                 if thefile != file:
                     old = '#: '+os.path.join(dirpath, thefile)[2:]
-                    new = '#: '+os.path.join(dirpath, file)[2:]
+                    new = '#: '+orig_file[2:]
                     msgs = msgs.replace(old, new)
                 if os.path.exists(potfile):
                     # Strip the header
@@ -282,6 +280,8 @@ def make_messages(locale=None, domain='django', verbosity='1', all=False,
                     raise CommandError("errors happened while running msgmerge\n%s" % errors)
             elif not invoked_for_django:
                 msgs = copy_plural_forms(msgs, locale, domain, verbosity)
+            msgs = msgs.replace(
+                "#. #-#-#-#-#  %s.pot (PACKAGE VERSION)  #-#-#-#-#\n" % domain, "")
             f = open(pofile, 'wb')
             try:
                 f.write(msgs)

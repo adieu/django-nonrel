@@ -1,13 +1,13 @@
 import datetime
+import pickle
 from decimal import Decimal
+from operator import attrgetter
 
 from django.core.exceptions import FieldError
-from django.conf import settings
 from django.test import TestCase, Approximate, skipUnlessDBFeature
-from django.db import DEFAULT_DB_ALIAS
 from django.db.models import Count, Max, Avg, Sum, StdDev, Variance, F
 
-from regressiontests.aggregation_regress.models import *
+from models import Author, Book, Publisher, Clues, Entries, HardbackBook
 
 
 class AggregationTests(TestCase):
@@ -482,7 +482,7 @@ class AggregationTests(TestCase):
         # Regression for #10197 -- Queries with aggregates can be pickled.
         # First check that pickling is possible at all. No crash = success
         qs = Book.objects.annotate(num_authors=Count('authors'))
-        out = pickle.dumps(qs)
+        pickle.dumps(qs)
 
         # Then check that the round trip works.
         query = qs.query.get_compiler(qs.db).as_sql()[0]
@@ -620,6 +620,57 @@ class AggregationTests(TestCase):
         self.assertRaises(
             FieldError,
             lambda: Book.objects.annotate(mean_age=Avg('authors__age')).annotate(Avg('mean_age'))
+        )
+
+    def test_empty_filter_count(self):
+        self.assertEqual(
+            Author.objects.filter(id__in=[]).annotate(Count("friends")).count(),
+            0
+        )
+
+    def test_empty_filter_aggregate(self):
+        self.assertEqual(
+            Author.objects.filter(id__in=[]).annotate(Count("friends")).aggregate(Count("pk")),
+            {"pk__count": None}
+        )
+
+    def test_annotate_and_join(self):
+        self.assertEqual(
+            Author.objects.annotate(c=Count("friends__name")).exclude(friends__name="Joe").count(),
+            Author.objects.count()
+        )
+
+    def test_f_expression_annotation(self):
+        # Books with less than 200 pages per author.
+        qs = Book.objects.values("name").annotate(
+            n_authors=Count("authors")
+        ).filter(
+            pages__lt=F("n_authors") * 200
+        ).values_list("pk")
+        self.assertQuerysetEqual(
+            Book.objects.filter(pk__in=qs), [
+                "Python Web Development with Django"
+            ],
+            attrgetter("name")
+        )
+
+    def test_values_annotate_values(self):
+        qs = Book.objects.values("name").annotate(
+            n_authors=Count("authors")
+        ).values_list("pk", flat=True)
+        self.assertEqual(list(qs), list(Book.objects.values_list("pk", flat=True)))
+
+    def test_having_group_by(self):
+        # Test that when a field occurs on the LHS of a HAVING clause that it
+        # appears correctly in the GROUP BY clause
+        qs = Book.objects.values_list("name").annotate(
+            n_authors=Count("authors")
+        ).filter(
+            pages__gt=F("n_authors")
+        ).values_list("name", flat=True)
+        # Results should be the same, all Books have more pages than authors
+        self.assertEqual(
+            list(qs), list(Book.objects.values_list("name", flat=True))
         )
 
     @skipUnlessDBFeature('supports_stddev')

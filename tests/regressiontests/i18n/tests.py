@@ -7,12 +7,14 @@ import pickle
 
 from django.conf import settings
 from django.template import Template, Context
-from django.test import TestCase
 from django.utils.formats import get_format, date_format, time_format, localize, localize_input, iter_format_modules
+from django.utils.importlib import import_module
 from django.utils.numberformat import format as nformat
 from django.utils.safestring import mark_safe, SafeString, SafeUnicode
-from django.utils.translation import ugettext, ugettext_lazy, activate, deactivate, gettext_lazy, pgettext, npgettext, to_locale
-from django.utils.importlib import import_module
+from django.utils.translation import (ugettext, ugettext_lazy, activate,
+        deactivate, gettext_lazy, pgettext, npgettext, to_locale,
+        get_language_info)
+from django.utils.unittest import TestCase
 
 
 from forms import I18nForm, SelectDateForm, SelectDateWidget, CompanyForm
@@ -268,6 +270,7 @@ class FormattingTests(TestCase):
             self.assertEqual(u'66.666,666', localize(self.n))
             self.assertEqual(u'99.999,999', localize(self.f))
             self.assertEqual(u'10.000', localize(self.l))
+            self.assertEqual(u'True', localize(True))
 
             settings.USE_THOUSAND_SEPARATOR = False
             self.assertEqual(u'66666,666', localize(self.n))
@@ -337,6 +340,14 @@ class FormattingTests(TestCase):
             )
         finally:
             deactivate()
+
+        # Russian locale (with E as month)
+        activate('ru')
+        self.assertEqual(
+                u'<select name="mydate_day" id="id_mydate_day">\n<option value="1">1</option>\n<option value="2">2</option>\n<option value="3">3</option>\n<option value="4">4</option>\n<option value="5">5</option>\n<option value="6">6</option>\n<option value="7">7</option>\n<option value="8">8</option>\n<option value="9">9</option>\n<option value="10">10</option>\n<option value="11">11</option>\n<option value="12">12</option>\n<option value="13">13</option>\n<option value="14">14</option>\n<option value="15">15</option>\n<option value="16">16</option>\n<option value="17">17</option>\n<option value="18">18</option>\n<option value="19">19</option>\n<option value="20">20</option>\n<option value="21">21</option>\n<option value="22">22</option>\n<option value="23">23</option>\n<option value="24">24</option>\n<option value="25">25</option>\n<option value="26">26</option>\n<option value="27">27</option>\n<option value="28">28</option>\n<option value="29">29</option>\n<option value="30">30</option>\n<option value="31" selected="selected">31</option>\n</select>\n<select name="mydate_month" id="id_mydate_month">\n<option value="1">\u042f\u043d\u0432\u0430\u0440\u044c</option>\n<option value="2">\u0424\u0435\u0432\u0440\u0430\u043b\u044c</option>\n<option value="3">\u041c\u0430\u0440\u0442</option>\n<option value="4">\u0410\u043f\u0440\u0435\u043b\u044c</option>\n<option value="5">\u041c\u0430\u0439</option>\n<option value="6">\u0418\u044e\u043d\u044c</option>\n<option value="7">\u0418\u044e\u043b\u044c</option>\n<option value="8">\u0410\u0432\u0433\u0443\u0441\u0442</option>\n<option value="9">\u0421\u0435\u043d\u0442\u044f\u0431\u0440\u044c</option>\n<option value="10">\u041e\u043a\u0442\u044f\u0431\u0440\u044c</option>\n<option value="11">\u041d\u043e\u044f\u0431\u0440\u044c</option>\n<option value="12" selected="selected">\u0414\u0435\u043a\u0430\u0431\u0440\u044c</option>\n</select>\n<select name="mydate_year" id="id_mydate_year">\n<option value="2009" selected="selected">2009</option>\n<option value="2010">2010</option>\n<option value="2011">2011</option>\n<option value="2012">2012</option>\n<option value="2013">2013</option>\n<option value="2014">2014</option>\n<option value="2015">2015</option>\n<option value="2016">2016</option>\n<option value="2017">2017</option>\n<option value="2018">2018</option>\n</select>',
+                SelectDateWidget(years=range(2009, 2019)).render('mydate', datetime.date(2009, 12, 31))
+        )
+        deactivate()
 
         # English locale
 
@@ -708,3 +719,12 @@ class TestModels(TestCase):
         c.save()
         c.name = SafeString(u'Iñtërnâtiônàlizætiøn1'.encode('utf-8'))
         c.save()
+
+
+class TestLanguageInfo(TestCase):
+    def test_localized_language_info(self):
+        li = get_language_info('de')
+        self.assertEqual(li['code'], 'de')
+        self.assertEqual(li['name_local'], u'Deutsch')
+        self.assertEqual(li['name'], 'German')
+        self.assertEqual(li['bidi'], False)

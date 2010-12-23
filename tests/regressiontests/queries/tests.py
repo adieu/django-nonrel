@@ -27,6 +27,12 @@ class BaseQuerysetTest(TestCase):
         except Exception, e:
             self.assertEqual(msg, str(e))
             self.assertTrue(isinstance(e, exc), "Expected %s, got %s" % (exc, type(e)))
+        else:
+            if hasattr(exc, '__name__'):
+                excName = exc.__name__
+            else:
+                excName = str(exc)
+            raise AssertionError, "%s not raised" % excName
 
 
 class Queries1Tests(BaseQuerysetTest):
@@ -1093,11 +1099,12 @@ class Queries5Tests(TestCase):
         # Extra tables used to crash SQL construction on the second use.
         qs = Ranking.objects.extra(tables=['django_site'])
         qs.query.get_compiler(qs.db).as_sql()
-        qs.query.get_compiler(qs.db).as_sql()   # test passes if this doesn't raise an exception.
+        # test passes if this doesn't raise an exception.
+        qs.query.get_compiler(qs.db).as_sql()
 
     def test_ticket9848(self):
-        # Make sure that updates which only filter on sub-tables don't inadvertently
-        # update the wrong records (bug #9848).
+        # Make sure that updates which only filter on sub-tables don't
+        # inadvertently update the wrong records (bug #9848).
 
         # Make sure that the IDs from different tables don't happen to match.
         self.assertQuerysetEqual(
@@ -1283,15 +1290,15 @@ class Queries6Tests(TestCase):
         )
 
         # The annotation->tag link is single values and tag->children links is
-        # multi-valued. So we have to split the exclude filter in the middle and then
-        # optimise the inner query without losing results.
+        # multi-valued. So we have to split the exclude filter in the middle
+        # and then optimise the inner query without losing results.
         self.assertQuerysetEqual(
             Annotation.objects.exclude(tag__children__name="t2"),
             ['<Annotation: a2>']
         )
 
-        # Nested queries are possible (although should be used with care, since they have
-        # performance problems on backends like MySQL.
+        # Nested queries are possible (although should be used with care, since
+        # they have performance problems on backends like MySQL.
 
         self.assertQuerysetEqual(
             Annotation.objects.filter(notes__in=Note.objects.filter(note="n1")),
@@ -1301,7 +1308,7 @@ class Queries6Tests(TestCase):
     def test_ticket3739(self):
         # The all() method on querysets returns a copy of the queryset.
         q1 = Tag.objects.order_by('name')
-        self.assertNotEqual(id(q1), id(q1.all()))
+        self.assertIsNot(q1, q1.all())
 
 
 class GeneratorExpressionTests(TestCase):
@@ -1437,12 +1444,28 @@ class EmptyQuerySetTests(TestCase):
     def test_emptyqueryset_values(self):
         # #14366 -- Calling .values() on an EmptyQuerySet and then cloning that
         # should not cause an error"
-        self.assertEqual(list(Number.objects.none().values('num').order_by('num')), [])
+        self.assertQuerysetEqual(
+            Number.objects.none().values('num').order_by('num'), []
+        )
 
     def test_values_subquery(self):
         self.assertQuerysetEqual(
             Number.objects.filter(pk__in=Number.objects.none().values("pk")),
             []
+        )
+        self.assertQuerysetEqual(
+            Number.objects.filter(pk__in=Number.objects.none().values_list("pk")),
+            []
+        )
+
+
+class ValuesQuerysetTests(BaseQuerysetTest):
+    def test_flat_values_lits(self):
+        Number.objects.create(num=72)
+        qs = Number.objects.values_list("num")
+        qs = qs.values_list("num", flat=True)
+        self.assertValueQuerysetEqual(
+            qs, [72]
         )
 
 
@@ -1475,8 +1498,8 @@ class WeirdQuerysetSlicingTests(BaseQuerysetTest):
 class EscapingTests(TestCase):
     def test_ticket_7302(self):
         # Reserved names are appropriately escaped
-        _ = ReservedName.objects.create(name='a',order=42)
-        ReservedName.objects.create(name='b',order=37)
+        _ = ReservedName.objects.create(name='a', order=42)
+        ReservedName.objects.create(name='b', order=37)
         self.assertQuerysetEqual(
             ReservedName.objects.all().order_by('order'),
             ['<ReservedName: b>', '<ReservedName: a>']
@@ -1511,12 +1534,12 @@ class ConditionalTests(BaseQuerysetTest):
         self.assertRaisesMessage(
             FieldError,
             'Infinite loop caused by ordering.',
-            LoopX.objects.all
+            lambda: list(LoopX.objects.all()) # Force queryset evaluation with list()
         )
         self.assertRaisesMessage(
             FieldError,
             'Infinite loop caused by ordering.',
-            LoopZ.objects.all
+            lambda: list(LoopZ.objects.all()) # Force queryset evaluation with list()
         )
 
         # Note that this doesn't cause an infinite loop, since the default

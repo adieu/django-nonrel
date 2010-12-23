@@ -835,7 +835,10 @@ class ForeignKey(RelatedField, Field):
         if value is None:
             return
 
-        qs = self.rel.to._default_manager.filter(**{self.rel.field_name:value})
+        using = router.db_for_read(model_instance.__class__, instance=model_instance)
+        qs = self.rel.to._default_manager.using(using).filter(
+                **{self.rel.field_name: value}
+             )
         qs = qs.complex_filter(self.rel.limit_choices_to)
         if not qs.exists():
             raise exceptions.ValidationError(self.error_messages['invalid'] % {
@@ -1047,25 +1050,6 @@ class ManyToManyField(RelatedField, Field):
                     setattr(self, cache_attr, getattr(f, attr))
                     break
         return getattr(self, cache_attr)
-
-    def isValidIDList(self, field_data, all_data):
-        "Validates that the value is a valid list of foreign keys"
-        mod = self.rel.to
-        try:
-            pks = map(int, field_data.split(','))
-        except ValueError:
-            # the CommaSeparatedIntegerField validator will catch this error
-            return
-        objects = mod._default_manager.in_bulk(pks)
-        if len(objects) != len(pks):
-            badkeys = [k for k in pks if k not in objects]
-            raise exceptions.ValidationError(
-                ungettext("Please enter valid %(self)s IDs. The value %(value)r is invalid.",
-                          "Please enter valid %(self)s IDs. The values %(value)r are invalid.",
-                          len(badkeys)) % {
-                'self': self.verbose_name,
-                'value': len(badkeys) == 1 and badkeys[0] or tuple(badkeys),
-            })
 
     def value_to_string(self, obj):
         data = ''

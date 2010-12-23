@@ -30,7 +30,7 @@ provided, along with a completely generic view base class that can be
 used as the basis for reusable applications that can be easily
 extended.
 
-See :doc:`the documentation on Generic Views</topics/generic-views>`
+See :doc:`the documentation on Class-based Generic Views</topics/class-based-views>`
 for more details. There is also a document to help you :doc:`convert
 your function-based generic views to class-based
 views</topics/generic-views-migration>`.
@@ -59,7 +59,7 @@ In previous versions of Django, it was common to place static assets in
 app is to make it easier to keep static files separate from user-uploaded
 files. For this reason, you will probably want to make your
 :setting:`MEDIA_ROOT` and :setting:`MEDIA_URL` different from your
-:setting:`STATICFILES_ROOT` and :setting:`STATICFILES_URL`. You will need to
+:setting:`STATIC_ROOT` and :setting:`STATIC_URL`. You will need to
 arrange for serving of files in :setting:`MEDIA_ROOT` yourself;
 ``staticfiles`` does not deal with user-uploaded media at all.
 
@@ -121,13 +121,76 @@ value, protect, or do nothing.
 For more information, see the :attr:`~django.db.models.ForeignKey.on_delete`
 documentation.
 
-Contextual markers in translatable strings
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Contextual markers and comments for translatable strings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For translation strings with ambiguous meaning, you can now
 use the ``pgettext`` function to specify the context of the string.
 
-For more information, see :ref:`contextual-markers`
+And if you just want to add some information for translators, you
+can also add special translator comments in the source.
+
+For more information, see :ref:`contextual-markers` and
+:ref:`translator-comments`.
+
+TemplateResponse
+~~~~~~~~~~~~~~~~
+
+It can sometimes be beneficial to allow decorators or middleware to
+modify a response *after* it has been constructed by the view. For
+example, you may want to change the template that is used, or put
+additional data into the context.
+
+However, you can't (easily) modify the content of a basic
+:class:`~django.http.HttpResponse` after it has been constructed. To
+overcome this limitation, Django 1.3 adds a new
+:class:`~django.template.TemplateResponse` class. Unlike basic
+:class:`~django.http.HttpResponse` objects,
+:class:`~django.template.TemplateResponse` objects retain the details
+of the template and context that was provided by the view to compute
+the response. The final output of the response is not computed until
+it is needed, later in the response process.
+
+For more details, see the :ref:`documentation </ref/template-response>`
+on the :class:`~django.template.TemplateResponse` class.
+
+Caching changes
+~~~~~~~~~~~~~~~
+
+Django 1.3 sees the introduction of several improvements to the
+Django's caching infrastructure.
+
+Firstly, Django now supports multiple named caches. In the same way
+that Django 1.2 introduced support for multiple database connections,
+Django 1.3 allows you to use the new :setting:`CACHES` setting to
+define multiple named cache connections.
+
+Secondly, :ref:`Versioning <cache_versioning>`, :ref:`site-wide
+prefixing <cache_key_prefixing>` and :ref:`transformation
+<cache_key_transformation>` has been added to the cache API.
+
+Lastly, support for pylibmc_ has been added to the memcached cache
+backend.
+
+For more details, see the :ref:`documentation on
+caching in Django<topics/cache>`.
+
+.. _pylibmc: http://sendapatch.se/projects/pylibmc/
+
+Permissions for inactive users
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you provide a custom auth backend with ``supports_inactive_user`` set to
+``True``, an inactive user model will check the backend for permissions.
+This is useful for further centralizing the permission handling. See the
+:ref:`authentication docs <topics-auth>` for more details.
+
+GeoDjango
+~~~~~~~~~
+
+The GeoDjango test suite is now included when
+:ref:`running the Django test suite <running-unit-tests>` with ``runtests.py``
+when using :ref:`spatial database backends <spatial-backends>`.
 
 Everything else
 ~~~~~~~~~~~~~~~
@@ -151,6 +214,31 @@ requests. These include:
       :meth:`~django.test.client.Client.assertNumQueries` -- making it
       easier to test the database activity associated with a view.
 
+    * Support for lookups spanning relations in admin's ``list_filter``.
+
+    * Support for _HTTPOnly cookies.
+
+    * :meth:`mail_admins()` and :meth:`mail_managers()` now support
+      easily attaching HTML content to messages.
+
+    * :class:`EmailMessage` now supports CC's.
+
+    * Error emails now include more of the detail and formatting of
+      the debug server error page.
+
+    * :meth:`simple_tag` now accepts a :attr:`takes_context` argument,
+      making it easier to write simple template tags that require
+      access to template context.
+
+    * A new :meth:`~django.shortcuts.render()` shortcut -- an
+      alternative to :meth:`~django.shortcuts.render_to_response()`
+      providing a :class:`~django.template.RequestContext` by
+      default.
+
+    * Support for combining :ref:`F() expressions <query-expressions>`
+      with timedelta values when retrieving or updating database values.
+
+.. _HTTPOnly: http://www.owasp.org/index.php/HTTPOnly
 
 .. _backwards-incompatible-changes-1.3:
 
@@ -259,6 +347,36 @@ local flavors:
       has been removed from the province list in favor of the new
       official designation "Aceh (ACE)".
 
+FormSet updates
+~~~~~~~~~~~~~~~
+
+In Django 1.3 ``FormSet`` creation behavior is modified slightly. Historically
+the class didn't make a distinction between not being passed data and being
+passed empty dictionary. This was inconsistent with behavior in other parts of
+the framework. Starting with 1.3 if you pass in empty dictionary the
+``FormSet`` will raise a ``ValidationError``.
+
+For example with a ``FormSet``::
+
+    >>> class ArticleForm(Form):
+    ...     title = CharField()
+    ...     pub_date = DateField()
+    >>> ArticleFormSet = formset_factory(ArticleForm)
+
+the following code will raise a ``ValidationError``::
+
+    >>> ArticleFormSet({})
+    Traceback (most recent call last):
+    ...
+    ValidationError: [u'ManagementForm data is missing or has been tampered with']
+
+if you need to instantiate an empty ``FormSet``, don't pass in the data or use
+``None``::
+
+    >>> formset = ArticleFormSet()
+    >>> formset = ArticleFormSet(data=None)
+
+
 
 .. _deprecated-features-1.3:
 
@@ -284,7 +402,7 @@ be removed entirely.
 
     For more details, see the documentation :doc:`Django's release process
     </internals/release-process>` and our :doc:`deprecation timeline
-    </internals/deprecation>`.`
+    </internals/deprecation>`.
 
 ``mod_python`` support
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -295,9 +413,12 @@ of active projects in its version control repositories, and its lead developer
 has shifted all of his efforts toward the lighter, slimmer, more stable, and
 more flexible ``mod_wsgi`` backend.
 
-If you are currently using the ``mod_python`` request handler, it is strongly
-encouraged you redeploy your Django instances using :doc:`mod_wsgi
-</howto/deployment/modwsgi>`.
+If you are currently using the ``mod_python`` request handler, you
+should redeploy your Django projects using another request handler.
+:doc:`mod_wsgi </howto/deployment/modwsgi>` is the request handler
+recommended by the Django project, but :doc:`FastCGI
+</howto/deployment/fastcgi>` is also supported. Support for
+``mod_python`` deployment will be removed in Django 1.5.
 
 Function-based generic views
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -337,3 +458,84 @@ and Ctrl-C test termination) have been made redundant. In view of this
 redundancy, :class:`~django.test.simple.DjangoTestRunner` has been
 turned into an empty placeholder class, and will be removed entirely
 in Django 1.5.
+
+Changes to :ttag:`url` and :ttag:`ssi`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Most template tags will allow you to pass in either constants or
+variables as arguments -- for example::
+
+    {% extends "base.html" %}
+
+allows you to specify a base template as a constant, but if you have a
+context variable ``templ`` that contains the value ``base.html``::
+
+    {% extends templ %}
+
+is also legal.
+
+However, due to an accident of history, the :ttag:`url` and
+:ttag:`ssi` are different. These tags use the second, quoteless
+syntax, but interpret the argument as a constant. This means it isn't
+possible to use a context variable as the target of a :ttag:`url` and
+:ttag:`ssi` tag.
+
+Django 1.3 marks the start of the process to correct this historical
+accident. Django 1.3 adds a new template library -- ``future`` -- that
+provides alternate implementations of the :ttag:`url` and :ttag:`ssi`
+template tags. This ``future`` library implement behavior that makes
+the handling of the first argument consistent with the handling of all
+other variables. So, an existing template that contains::
+
+    {% url sample %}
+
+should be replaced with::
+
+    {% load url from future %}
+    {% url 'sample' %}
+
+The tags implementing the old behavior have been deprecated, and in
+Django 1.5, the old behavior will be replaced with the new behavior.
+To ensure compatibility with future versions of Django, existing
+templates should be modified to use the new ``future`` libraries and
+syntax.
+
+Changes to the login methods of the admin
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In previous version the admin app defined login methods in multiple locations
+and ignored the almost identical implementation in the already used auth app.
+A side effect of this duplication was the missing adoption of the changes made
+in r12634_ to support a broader set of characters for usernames.
+
+This release refactores the admin's login mechanism to use a subclass of the
+:class:`~django.contrib.auth.forms.AuthenticationForm` instead of a manual
+form validation. The previously undocumented method
+``'django.contrib.admin.sites.AdminSite.display_login_form'`` has been removed
+in favor of a new :attr:`~django.contrib.admin.AdminSite.login_form`
+attribute.
+
+.. _r12634: http://code.djangoproject.com/changeset/12634
+
+``reset`` and ``sqlreset`` management commands
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Those commands have been deprecated. The ``flush`` and ``sqlflush`` commands
+can be used to delete everything. You can also use ALTER TABLE or DROP TABLE
+statements manually.
+
+
+GeoDjango
+~~~~~~~~~
+
+  * The function-based :setting:`TEST_RUNNER` previously used to execute
+    the GeoDjango test suite, :func:`django.contrib.gis.tests.run_gis_tests`,
+    was deprecated for the class-bassed runner,
+    :class:`django.contrib.gis.tests.GeoDjangoTestSuiteRunner`.
+
+  * Previously, calling :meth:`~django.contrib.gis.geos.GEOSGeometry.transform`
+    would silently do nothing when GDAL wasn't available.  Now,
+    a :class:`~django.contrib.gis.geos.GEOSException` is properly raised
+    to indicate possible faulty application code.  A warning is now raised
+    if :meth:`~django.contrib.gis.geos.GEOSGeometry.transform` is called when
+    the SRID of the geometry is less than 0 or ``None``.

@@ -76,39 +76,25 @@ TemplateResponseMixin
 
         The path to the template to use when rendering the view.
 
-    .. method:: render_to_response(context)
+    .. attribute:: response_class
 
-        Returns a full composed HttpResponse instance, ready to be returned to
-        the user.
+        The response class to be returned by ``render_to_response`` method.
+        Default is
+        :class:`TemplateResponse <django.template.response.TemplateResponse>`.
+        The template and context of TemplateResponse instances can be
+        altered later (e.g. in
+        :ref:`template response middleware <template-response-middleware>`).
 
-        Calls :meth:`~TemplateResponseMixin.render_template()` to build the
-        content of the response, and
-        :meth:`~TemplateResponseMixin.get_response()` to construct the
-        :class:`~django.http.HttpResponse` object.
+        Create TemplateResponse subclass and pass set it to
+        ``template_response_class`` if you need custom template loading or
+        custom context object instantiation.
 
-    .. method:: get_response(content, **httpresponse_kwargs)
+    .. method:: render_to_response(context, **response_kwargs)
 
-        Constructs the :class:`~django.http.HttpResponse` object around the
-        given content. If any keyword arguments are provided, they will be
-        passed to the constructor of the :class:`~django.http.HttpResponse`
-        instance.
+        Returns a ``self.template_response_class`` instance.
 
-    .. method:: render_template(context)
-
-        Calls :meth:`~TemplateResponseMixin.get_context_instance()` to obtain
-        the :class:`Context` instance to use for rendering, and calls
-        :meth:`TemplateReponseMixin.get_template()` to load the template that
-        will be used to render the final content.
-
-    .. method:: get_context_instance(context)
-
-        Turns the data dictionary ``context`` into an actual context instance
-        that can be used for rendering.
-
-        By default, constructs a :class:`~django.template.RequestContext`
-        instance.
-
-    .. method:: get_template()
+        If any keyword arguments are provided, they will be
+        passed to the constructor of the response instance.
 
         Calls :meth:`~TemplateResponseMixin.get_template_names()` to obtain the
         list of template names that will be searched looking for an existent
@@ -123,10 +109,6 @@ TemplateResponseMixin
         default implementation will return a list containing
         :attr:`TemplateResponseMixin.template_name` (if it is specified).
 
-    .. method:: load_template(names)
-
-        Loads and returns a template found by searching the list of ``names``
-        for a match. Uses Django's default template loader.
 
 Single object mixins
 --------------------
@@ -305,6 +287,14 @@ MultipleObjectMixin
         expect either a ``page`` query string parameter (via ``GET``) or a
         ``page`` variable specified in the URLconf.
 
+    .. attribute:: paginator_class
+
+       The paginator class to be used for pagination. By default,
+       :class:`django.core.paginator.Paginator` is used. If the custom paginator
+       class doesn't have the same constructor interface as
+       :class:`django.core.paginator.Paginator`, you will also need to
+       provide an implementation for :meth:`MultipleObjectMixin.get_paginator`.
+
     .. attribute:: context_object_name
 
         Designates the name of the variable to use in the context.
@@ -329,6 +319,11 @@ MultipleObjectMixin
         pagination. By default this simply returns the value of
         :attr:`MultipleObjectMixin.paginate_by`.
 
+    .. method:: get_paginator(queryset, per_page, orphans=0, allow_empty_first_page=True)
+
+        Returns an instance of the paginator to use for this view. By default,
+        instantiates an instance of :attr:`paginator_class`.
+
     .. method:: get_allow_empty()
 
         Return a boolean specifying whether to display the page if no objects
@@ -349,22 +344,22 @@ MultipleObjectMixin
 
     **Context**
 
-        * ``object_list``: The list of object that this view is displaying. If
+        * ``object_list``: The list of objects that this view is displaying. If
           ``context_object_name`` is specified, that variable will also be set
           in the context, with the same value as ``object_list``.
 
         * ``is_paginated``: A boolean representing whether the results are
           paginated. Specifically, this is set to ``False`` if no page size has
-          been specified, or if the number of available objects is less than or
-          equal to ``paginate_by``.
+          been specified, or if the available objects do not span multiple
+          pages.
 
         * ``paginator``: An instance of
           :class:`django.core.paginator.Paginator`. If the page is not
-          paginated, this context variable will be ``None``
+          paginated, this context variable will be ``None``.
 
         * ``page_obj``: An instance of
           :class:`django.core.paginator.Page`. If the page is not paginated,
-          this context variable will be ``None``
+          this context variable will be ``None``.
 
 MultipleObjectTemplateResponseMixin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -418,27 +413,34 @@ FormMixin
     .. method:: get_initial()
 
         Retrieve initial data for the form. By default, returns
-        :attr:`FormMixin.initial`.
+        :attr:`.initial`.
 
     .. method:: get_form_class()
 
-        Retrieve the form class to instantiate. By default,
-        :attr:`FormMixin.form_class`.
+        Retrieve the form class to instantiate. By default
+        :attr:`.form_class`.
 
     .. method:: get_form(form_class)
 
-        Instantiate an instance of ``form_class``. If the request is a ``POST``
-        or ``PUT``, the request data (``request.POST`` and ``request.FILES``)
-        will be provided to the form at time of construction.
+        Instantiate an instance of ``form_class`` using
+        :meth:`.get_form_kwargs`.
+
+    .. method:: get_form_kwargs()
+
+        Build the keyword arguments requried to instanciate an the form.
+        
+        The ``initial`` argument is set to :meth:`.get_initial`. If the
+        request is a ``POST`` or ``PUT``, the request data (``request.POST``
+        and ``request.FILES``) will also be provided.
 
     .. method:: get_success_url()
 
         Determine the URL to redirect to when the form is successfully
-        validated. Returns :attr:`FormMixin.success_url` by default.
+        validated. Returns :attr:`.success_url` by default.
 
     .. method:: form_valid()
 
-        Redirects to :attr:`ModelFormMixin.success_url`.
+        Redirects to :meth:`.get_success_url`.
 
     .. method:: form_invalid()
 
@@ -454,9 +456,9 @@ FormMixin
 
     .. note::
 
-        Views mixing :class:`~django.views.generic.edit.FormMixin` must
-        provide an implementation of :meth:`~FormMixin.form_valid` and
-        :meth:`~FormMixin.form_invalid`.
+        Views mixing :class:`FormMixin` must
+        provide an implementation of :meth:`.form_valid` and
+        :meth:`.form_invalid`.
 
 ModelFormMixin
 ~~~~~~~~~~~~~~
@@ -466,8 +468,8 @@ ModelFormMixin
 
     Since this is a subclass of
     :class:`~django.views.generic.detail.SingleObjectMixin`, instances of this
-    mixin have access to the :attr:`~SingleObjectMixin.model`` and
-    :attr:`~SingleObjectMixin.queryset`` attributes, describing the type of
+    mixin have access to the :attr:`~SingleObjectMixin.model` and
+    :attr:`~SingleObjectMixin.queryset` attributes, describing the type of
     object that the ModelForm is manipulating. The view also provides
     ``self.object``, the instance being manipulated. If the instance is being
     created, ``self.object`` will be ``None``
@@ -481,21 +483,24 @@ ModelFormMixin
 
         The URL to redirect to when the form is successfully processed.
 
+        ``success_url`` may contain dictionary string formatting, which
+        will be interpolated against the object's field attributes. For
+        example, you could use ``success_url="/polls/%(slug)s/"`` to
+        redirect to a URL composed out of the ``slug`` field on a model.
+
     .. method:: get_form_class()
 
         Retrieve the form class to instantiate. If
         :attr:`FormMixin.form_class` is provided, that class will be used.
         Otherwise, a ModelForm will be instantiated using the model associated
-        with the :attr:`~SingleObjectMixin.queryset``, or with the
-        :attr:`~SingleObjectMixin.model``, depending on which attribute is
+        with the :attr:`~SingleObjectMixin.queryset`, or with the
+        :attr:`~SingleObjectMixin.model`, depending on which attribute is
         provided.
 
-    .. method:: get_form(form_class)
+    .. method:: get_form_kwargs()
 
-        Instantiate an instance of ``form_class``. If the request is a ``POST``
-        or ``PUT``, the request data (``request.POST`` and ``request.FILES``)
-        will be provided to the form at time of construction. The current
-        instance (``self.object``) will also be provided.
+        Add the current instance (``self.object``) to the standard
+        :meth:`FormMixin.get_form_kwargs`.
 
     .. method:: get_success_url()
 
@@ -506,7 +511,7 @@ ModelFormMixin
     .. method:: form_valid()
 
         Saves the form instance, sets the current object for the view, and
-        redirects to :attr:`ModelFormMixin.success_url`.
+        redirects to :meth:`.get_success_url`.
 
     .. method:: form_invalid()
 
@@ -624,7 +629,7 @@ MonthMixin
     .. method:: get_next_month(date)
 
         Returns a date object containing the first day of the month after the
-        date provided. Returns `None`` if mixed with a view that sets
+        date provided. Returns ``None`` if mixed with a view that sets
         ``allow_future = False``, and the next month is in the future. If
         ``allow_empty = False``, returns the next month that contains data.
 
@@ -670,7 +675,7 @@ DayMixin
     .. method:: get_next_day(date)
 
         Returns a date object containing the next day after the date provided.
-        Returns `None`` if mixed with a view that sets ``allow_future = False``,
+        Returns ``None`` if mixed with a view that sets ``allow_future = False``,
         and the next day is in the future. If ``allow_empty = False``, returns
         the next day that contains data.
 
@@ -779,7 +784,7 @@ BaseDateListView
         ``object_list`` is the list of objects ``extra_context`` is a
         dictionary of context data that will be added to any context data
         provided by the
-        :class:`~django.db.views.generic.list.MultiplObjectMixin`.
+        :class:`~django.views.generic.list.MultipleObjectMixin`.
 
     .. method:: get_dated_queryset(**lookup)
 
@@ -792,7 +797,7 @@ BaseDateListView
         Returns the list of dates of type ``date_type`` for which
         ``queryset`` contains entries. For example, ``get_date_list(qs,
         'year')`` will return the list of years for which ``qs`` has entries.
-        See :meth:``~django.db.models.QuerySet.dates()` for the
+        See :meth:`~django.db.models.QuerySet.dates()` for the
         ways that the ``date_type`` argument can be used.
 
 
@@ -975,7 +980,7 @@ ListView
 
     **Mixins**
 
-      * :class:`django.views.generic.base.MultipleObjectMixin`
+      * :class:`django.views.generic.list.MultipleObjectMixin`
       * :class:`django.views.generic.list.MultipleObjectTemplateResponseMixin`
 
 

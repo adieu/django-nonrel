@@ -195,9 +195,9 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.core.context_processors.debug',
     'django.core.context_processors.i18n',
     'django.core.context_processors.media',
+    'django.core.context_processors.static',
 #    'django.core.context_processors.request',
     'django.contrib.messages.context_processors.messages',
-    'django.contrib.staticfiles.context_processors.staticfiles',
 )
 
 # Output to use in template system for invalid (e.g. misspelled) variables.
@@ -255,13 +255,21 @@ SECRET_KEY = ''
 # Default file storage mechanism that holds media.
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
-# Absolute path to the directory that holds media.
-# Example: "/home/media/media.lawrence.com/"
+# Absolute filesystem path to the directory that will hold user-uploaded files.
+# Example: "/home/media/media.lawrence.com/media/"
 MEDIA_ROOT = ''
 
 # URL that handles the media served from MEDIA_ROOT.
-# Example: "http://media.lawrence.com"
+# Example: "http://media.lawrence.com/media/"
 MEDIA_URL = ''
+
+# Absolute path to the directory that holds static files.
+# Example: "/home/media/media.lawrence.com/static/"
+STATIC_ROOT = ''
+
+# URL that handles the static files served from STATIC_ROOT.
+# Example: "http://media.lawrence.com/static/"
+STATIC_URL = None
 
 # List of upload handler classes to be applied in order.
 FILE_UPLOAD_HANDLERS = (
@@ -413,6 +421,7 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 7 * 2               # Age of cookie, in seco
 SESSION_COOKIE_DOMAIN = None                            # A string like ".lawrence.com", or None for standard domain cookie.
 SESSION_COOKIE_SECURE = False                           # Whether the session cookie should be secure (https:// only).
 SESSION_COOKIE_PATH = '/'                               # The path of the session cookie.
+SESSION_COOKIE_HTTPONLY = False                         # Whether to use the non-RFC standard httpOnly flag (IE, FF3+, others)
 SESSION_SAVE_EVERY_REQUEST = False                      # Whether to save the session data on every request.
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False                 # Whether a user's session cookie expires when the Web browser is closed.
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # The module to store session data
@@ -422,11 +431,15 @@ SESSION_FILE_PATH = None                                # Directory to store ses
 # CACHE #
 #########
 
+# New format
+CACHES = {
+}
 # The cache backend to use.  See the docstring in django.core.cache for the
 # possible values.
 CACHE_BACKEND = 'locmem://'
 CACHE_MIDDLEWARE_KEY_PREFIX = ''
 CACHE_MIDDLEWARE_SECONDS = 600
+CACHE_MIDDLEWARE_ALIAS = 'default'
 
 ####################
 # COMMENTS         #
@@ -551,14 +564,6 @@ FIXTURE_DIRS = ()
 ###############
 # STATICFILES #
 ###############
-
-# Absolute path to the directory that holds media.
-# Example: "/home/media/media.lawrence.com/static/"
-STATICFILES_ROOT = ''
-
-# URL that handles the static files served from STATICFILES_ROOT.
-# Example: "http://media.lawrence.com/static/"
-STATICFILES_URL = '/static/'
 
 # A list of locations of additional static files
 STATICFILES_DIRS = ()

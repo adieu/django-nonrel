@@ -22,7 +22,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "_ext"))
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
-#needs_sphinx = '1.0'
+needs_sphinx = '1.0'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
@@ -87,9 +87,9 @@ show_authors = False
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'trac'
 
-# Sphinx will recurse into subversion configuration folders and try to read  
-# any document file within. These should be ignored. 
-# Note: exclude_dirnames is new in Sphinx 0.5 
+# Sphinx will recurse into subversion configuration folders and try to read
+# any document file within. These should be ignored.
+# Note: exclude_dirnames is new in Sphinx 0.5
 exclude_dirnames = ['.svn']
 
 # -- Options for HTML output ---------------------------------------------------

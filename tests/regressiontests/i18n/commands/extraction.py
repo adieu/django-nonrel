@@ -38,7 +38,18 @@ class ExtractorTests(TestCase):
         return self.assert_(not re.search('^msgid %s' % msgid, s, re.MULTILINE))
 
 
-class TemplateExtractorTests(ExtractorTests):
+class BasicExtractorTests(ExtractorTests):
+
+    def test_comments_extractor(self):
+        os.chdir(self.test_dir)
+        management.call_command('makemessages', locale=LOCALE, verbosity=0)
+        self.assert_(os.path.exists(self.PO_FILE))
+        po_contents = open(self.PO_FILE, 'r').read()
+        self.assert_('#. Translators: This comment should be extracted' in po_contents)
+        self.assert_('This comment should not be extracted' not in po_contents)
+        # Comments in templates
+        self.assert_('#. Translators: Django template comment for translators' in po_contents)
+        self.assert_('#. Translators: Django comment block for translators' in po_contents)
 
     def test_templatize(self):
         os.chdir(self.test_dir)
@@ -47,6 +58,18 @@ class TemplateExtractorTests(ExtractorTests):
         po_contents = open(self.PO_FILE, 'r').read()
         self.assertMsgId('I think that 100%% is more that 50%% of anything.', po_contents)
         self.assertMsgId('I think that 100%% is more that 50%% of %\(obj\)s.', po_contents)
+
+    def test_extraction_error(self):
+        os.chdir(self.test_dir)
+        shutil.copyfile('./templates/template_with_error.txt', './templates/template_with_error.html')
+        self.assertRaises(SyntaxError, management.call_command, 'makemessages', locale=LOCALE, verbosity=0)
+        try:
+            management.call_command('makemessages', locale=LOCALE, verbosity=0)
+        except SyntaxError, e:
+            self.assertEqual(str(e), 'Translation blocks must not include other block tags: blocktrans (file templates/template_with_error.html, line 3)')
+        finally:
+            os.remove('./templates/template_with_error.html')
+            os.remove('./templates/template_with_error.html.py') # Waiting for #8536 to be fixed
 
 
 class JavascriptExtractorTests(ExtractorTests):

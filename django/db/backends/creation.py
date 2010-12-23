@@ -2,7 +2,6 @@ import sys
 import time
 
 from django.conf import settings
-from django.core.management import call_command
 from django.utils.datastructures import DictWrapper
 
 # The prefix to put on the default database name when creating
@@ -46,8 +45,6 @@ class BaseDatabaseCreation(object):
         Returns the SQL required to create a single model, as a tuple of:
             (list_of_sql, pending_references_dict)
         """
-        from django.db import models
-
         opts = model._meta
         if not opts.managed or opts.proxy:
             return [], {}
@@ -354,10 +351,18 @@ class BaseDatabaseCreation(object):
         Creates a test database, prompting the user for confirmation if the
         database already exists. Returns the name of the test database created.
         """
-        if verbosity >= 1:
-            print "Creating test database '%s'..." % self.connection.alias
+        # Don't import django.core.management if it isn't needed.
+        from django.core.management import call_command
 
-        test_database_name = self._create_test_db(verbosity, autoclobber)
+        test_database_name = self._get_test_db_name()
+
+        if verbosity >= 1:
+            test_db_repr = ''
+            if verbosity >= 2:
+                test_db_repr = " ('%s')" % test_database_name
+            print "Creating test database for alias '%s'%s..." % (self.connection.alias, test_db_repr)
+
+        self._create_test_db(verbosity, autoclobber)
 
         self.connection.close()
         self.connection.settings_dict["NAME"] = test_database_name
@@ -370,12 +375,14 @@ class BaseDatabaseCreation(object):
         # (unless you really ask to be flooded)
         call_command('syncdb', verbosity=max(verbosity - 1, 0), interactive=False, database=self.connection.alias)
 
-        if settings.CACHE_BACKEND.startswith('db://'):
-            from django.core.cache import parse_backend_uri, cache
-            from django.db import router
-            if router.allow_syncdb(self.connection.alias, cache.cache_model_class):
-                _, cache_name, _ = parse_backend_uri(settings.CACHE_BACKEND)
-                call_command('createcachetable', cache_name, database=self.connection.alias)
+        from django.core.cache import get_cache
+        from django.core.cache.backends.db import BaseDatabaseCache
+        for cache_alias in settings.CACHES:
+            cache = get_cache(cache_alias)
+            if isinstance(cache, BaseDatabaseCache):
+                from django.db import router
+                if router.allow_syncdb(self.connection.alias, cache.cache_model_class):
+                    call_command('createcachetable', cache._table, database=self.connection.alias)
 
         # Get a cursor (even though we don't need one yet). This has
         # the side effect of initializing the test database.
@@ -383,14 +390,22 @@ class BaseDatabaseCreation(object):
 
         return test_database_name
 
+    def _get_test_db_name(self):
+        """
+        Internal implementation - returns the name of the test DB that will be
+        created. Only useful when called from create_test_db() and
+        _create_test_db() and when no external munging is done with the 'NAME'
+        or 'TEST_NAME' settings.
+        """
+        if self.connection.settings_dict['TEST_NAME']:
+            return self.connection.settings_dict['TEST_NAME']
+        return TEST_DATABASE_PREFIX + self.connection.settings_dict['NAME']
+
     def _create_test_db(self, verbosity, autoclobber):
         "Internal implementation - creates the test db tables."
         suffix = self.sql_table_creation_suffix()
 
-        if self.connection.settings_dict['TEST_NAME']:
-            test_database_name = self.connection.settings_dict['TEST_NAME']
-        else:
-            test_database_name = TEST_DATABASE_PREFIX + self.connection.settings_dict['NAME']
+        test_database_name = self._get_test_db_name()
 
         qn = self.connection.ops.quote_name
 
@@ -425,10 +440,13 @@ class BaseDatabaseCreation(object):
         Destroy a test database, prompting the user for confirmation if the
         database already exists. Returns the name of the test database created.
         """
-        if verbosity >= 1:
-            print "Destroying test database '%s'..." % self.connection.alias
         self.connection.close()
         test_database_name = self.connection.settings_dict['NAME']
+        if verbosity >= 1:
+            test_db_repr = ''
+            if verbosity >= 2:
+                test_db_repr = " ('%s')" % test_database_name
+            print "Destroying test database for alias '%s'%s..." % (self.connection.alias, test_db_repr)
         self.connection.settings_dict['NAME'] = old_database_name
 
         self._destroy_test_db(test_database_name, verbosity)

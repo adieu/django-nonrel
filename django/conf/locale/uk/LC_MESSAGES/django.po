@@ -9,7 +9,7 @@ msgstr ""
 "POT-Creation-Date: 2008-11-19 19:42+0200\n"
 "PO-Revision-Date: 2010-04-06 00:02+0300\n"
 "Last-Translator: Mykola Zamkovoy <nickzam@gmail.com>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language-Team: UK <uk@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -732,7 +732,7 @@ msgstr "Уперед"
 #, python-format
 msgid "1 result"
 msgid_plural "%(counter)s results"
-msgstr[0] "1 результат"
+msgstr[0] "%(counter)s результат"
 msgstr[1] "%(counter)s результати"
 msgstr[2] "%(counter)s результатів"
 
@@ -4564,6 +4564,66 @@ msgstr "Лис."
 #: .\utils\dates.py:32
 msgid "Dec."
 msgstr "Груд."
+
+#: utils/dates.py:45
+msgctxt "alt. month"
+msgid "January"
+msgstr "січня"
+
+#: utils/dates.py:46
+msgctxt "alt. month"
+msgid "February"
+msgstr "лютого"
+
+#: utils/dates.py:47
+msgctxt "alt. month"
+msgid "March"
+msgstr "березня"
+
+#: utils/dates.py:48
+msgctxt "alt. month"
+msgid "April"
+msgstr "квітня"
+
+#: utils/dates.py:49
+msgctxt "alt. month"
+msgid "May"
+msgstr "травня"
+
+#: utils/dates.py:50
+msgctxt "alt. month"
+msgid "June"
+msgstr "червня"
+
+#: utils/dates.py:51
+msgctxt "alt. month"
+msgid "July"
+msgstr "липня"
+
+#: utils/dates.py:52
+msgctxt "alt. month"
+msgid "August"
+msgstr "серпня"
+
+#: utils/dates.py:53
+msgctxt "alt. month"
+msgid "September"
+msgstr "вересня"
+
+#: utils/dates.py:54
+msgctxt "alt. month"
+msgid "October"
+msgstr "жовтня"
+
+#: utils/dates.py:55
+msgctxt "alt. month"
+msgid "November"
+msgstr "листопада"
+
+#: utils/dates.py:56
+msgctxt "alt. month"
+msgid "December"
+msgstr "грудня"
 
 #: .\utils\text.py:128
 msgid "or"

@@ -262,6 +262,10 @@ class ModelState(object):
     """
     def __init__(self, db=None):
         self.db = db
+        # If true, uniqueness validation checks will consider this a new, as-yet-unsaved object.
+        # Necessary for correct validation of new instances of objects with explicit (non-auto) PKs.
+        # This impacts validation only; it has no effect on the actual save.
+        self.adding = True
 
 class Model(object):
     __metaclass__ = ModelBase
@@ -575,6 +579,8 @@ class Model(object):
 
         # Store the database on which the object was saved
         self._state.db = using
+        # Once saved, this is no longer a to-be-added instance.
+        self._state.adding = False
 
         # Signal that the save is complete
         if origin and not meta.auto_created:
@@ -587,6 +593,7 @@ class Model(object):
 
         self._entity_exists = True
         self._original_pk = self.pk
+
 
     save_base.alters_data = True
 
@@ -731,7 +738,7 @@ class Model(object):
                 if lookup_value is None:
                     # no value, skip the lookup
                     continue
-                if f.primary_key and not getattr(self, '_adding', False):
+                if f.primary_key and not self._state.adding:
                     # no need to check for unique primary key when editing
                     continue
                 lookup_kwargs[str(field_name)] = lookup_value
@@ -744,7 +751,7 @@ class Model(object):
 
             # Exclude the current object from the query if we are editing an
             # instance (as opposed to creating a new one)
-            if not getattr(self, '_adding', False) and self.pk is not None:
+            if not self._state.adding and self.pk is not None:
                 qs = qs.exclude(pk=self.pk)
 
             if qs.exists():
@@ -774,7 +781,7 @@ class Model(object):
             qs = model_class._default_manager.filter(**lookup_kwargs)
             # Exclude the current object from the query if we are editing an
             # instance (as opposed to creating a new one)
-            if not getattr(self, '_adding', False) and self.pk is not None:
+            if not self._state.adding and self.pk is not None:
                 qs = qs.exclude(pk=self.pk)
 
             if qs.exists():

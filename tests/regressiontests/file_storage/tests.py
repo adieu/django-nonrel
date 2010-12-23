@@ -4,21 +4,24 @@ import shutil
 import sys
 import tempfile
 import time
-from cStringIO import StringIO
 from datetime import datetime, timedelta
-from django.conf import settings
-from django.core.exceptions import SuspiciousOperation
-from django.core.files.base import ContentFile, File
-from django.core.files.images import get_image_dimensions
-from django.core.files.storage import FileSystemStorage, get_storage_class
-from django.core.files.uploadedfile import UploadedFile
-from django.core.exceptions import ImproperlyConfigured
-from django.utils import unittest
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 try:
     import threading
 except ImportError:
     import dummy_threading as threading
+
+from django.conf import settings
+from django.core.exceptions import SuspiciousOperation, ImproperlyConfigured
+from django.core.files.base import ContentFile, File
+from django.core.files.images import get_image_dimensions
+from django.core.files.storage import FileSystemStorage, get_storage_class
+from django.core.files.uploadedfile import UploadedFile
+from django.utils import unittest
 
 # Try to import PIL in either of the two ways it can end up installed.
 # Checking for the existence of Image is enough for CPython, but
@@ -30,6 +33,7 @@ except ImportError:
         import Image, _imaging
     except ImportError:
         Image = None
+
 
 class GetStorageClassTests(unittest.TestCase):
     def assertRaisesErrorWithMessage(self, error, message, callable,
@@ -98,7 +102,7 @@ class FileStorageTests(unittest.TestCase):
         """
         Standard file access options are available, and work as expected.
         """
-        self.failIf(self.storage.exists('storage_test'))
+        self.assertFalse(self.storage.exists('storage_test'))
         f = self.storage.open('storage_test', 'w')
         f.write('storage contents')
         f.close()
@@ -109,14 +113,14 @@ class FileStorageTests(unittest.TestCase):
         f.close()
 
         self.storage.delete('storage_test')
-        self.failIf(self.storage.exists('storage_test'))
+        self.assertFalse(self.storage.exists('storage_test'))
 
     def test_file_accessed_time(self):
         """
         File storage returns a Datetime object for the last accessed time of
         a file.
         """
-        self.failIf(self.storage.exists('test.file'))
+        self.assertFalse(self.storage.exists('test.file'))
 
         f = ContentFile('custom contents')
         f_name = self.storage.save('test.file', f)
@@ -132,7 +136,7 @@ class FileStorageTests(unittest.TestCase):
         File storage returns a Datetime object for the creation time of
         a file.
         """
-        self.failIf(self.storage.exists('test.file'))
+        self.assertFalse(self.storage.exists('test.file'))
 
         f = ContentFile('custom contents')
         f_name = self.storage.save('test.file', f)
@@ -149,7 +153,7 @@ class FileStorageTests(unittest.TestCase):
         File storage returns a Datetime object for the last modified time of
         a file.
         """
-        self.failIf(self.storage.exists('test.file'))
+        self.assertFalse(self.storage.exists('test.file'))
 
         f = ContentFile('custom contents')
         f_name = self.storage.save('test.file', f)
@@ -166,7 +170,7 @@ class FileStorageTests(unittest.TestCase):
         File storage extracts the filename from the content object if no
         name is given explicitly.
         """
-        self.failIf(self.storage.exists('test.file'))
+        self.assertFalse(self.storage.exists('test.file'))
 
         f = ContentFile('custom contents')
         f.name = 'test.file'
@@ -183,7 +187,7 @@ class FileStorageTests(unittest.TestCase):
         """
         File storage returns the full path of a file
         """
-        self.failIf(self.storage.exists('test.file'))
+        self.assertFalse(self.storage.exists('test.file'))
 
         f = ContentFile('custom contents')
         f_name = self.storage.save('test.file', f)
@@ -208,7 +212,7 @@ class FileStorageTests(unittest.TestCase):
         File storage can get a mixin to extend the functionality of the
         returned file.
         """
-        self.failIf(self.storage.exists('test.file'))
+        self.assertFalse(self.storage.exists('test.file'))
 
         class TestFileMixin(object):
             mixed_in = True
@@ -227,9 +231,9 @@ class FileStorageTests(unittest.TestCase):
         """
         File storage returns a tuple containing directories and files.
         """
-        self.failIf(self.storage.exists('storage_test_1'))
-        self.failIf(self.storage.exists('storage_test_2'))
-        self.failIf(self.storage.exists('storage_dir_1'))
+        self.assertFalse(self.storage.exists('storage_test_1'))
+        self.assertFalse(self.storage.exists('storage_test_2'))
+        self.assertFalse(self.storage.exists('storage_dir_1'))
 
         f = self.storage.save('storage_test_1', ContentFile('custom content'))
         f = self.storage.save('storage_test_2', ContentFile('custom content'))
@@ -352,7 +356,7 @@ class FileStoragePathParsing(unittest.TestCase):
         self.storage.save('dotted.path/test', ContentFile("1"))
         self.storage.save('dotted.path/test', ContentFile("2"))
 
-        self.failIf(os.path.exists(os.path.join(self.storage_dir, 'dotted_.path')))
+        self.assertFalse(os.path.exists(os.path.join(self.storage_dir, 'dotted_.path')))
         self.assert_(os.path.exists(os.path.join(self.storage_dir, 'dotted.path/test')))
         self.assert_(os.path.exists(os.path.join(self.storage_dir, 'dotted.path/test_1')))
 
@@ -430,6 +434,7 @@ class InconsistentGetImageDimensionsBug(unittest.TestCase):
         Multiple calls of get_image_dimensions() should return the same size.
         """
         from django.core.files.images import ImageFile
+
         img_path = os.path.join(os.path.dirname(__file__), "test.png")
         image = ImageFile(open(img_path, 'rb'))
         image_pil = Image.open(img_path)

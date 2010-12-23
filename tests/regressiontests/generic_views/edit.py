@@ -7,6 +7,10 @@ from django.utils.unittest import expectedFailure
 from regressiontests.generic_views.models import Artist, Author
 from regressiontests.generic_views import views
 
+class ModelFormMixinTests(TestCase):
+    def test_get_form(self):
+        form_class = views.AuthorGetQuerySetFormView().get_form_class()
+        self.assertEqual(form_class.Meta.model, Author)
 
 class CreateViewTests(TestCase):
     urls = 'regressiontests.generic_views.urls'
@@ -46,6 +50,14 @@ class CreateViewTests(TestCase):
         self.assertEqual(res.status_code, 302)
         self.assertRedirects(res, 'http://testserver/edit/authors/create/')
         self.assertQuerysetEqual(Author.objects.all(), ['<Author: Randall Munroe>'])
+
+    def test_create_with_interpolated_redirect(self):
+        res = self.client.post('/edit/authors/create/interpolate_redirect/',
+                            {'name': 'Randall Munroe', 'slug': 'randall-munroe'})
+        self.assertQuerysetEqual(Author.objects.all(), ['<Author: Randall Munroe>'])
+        self.assertEqual(res.status_code, 302)
+        pk = Author.objects.all()[0].pk
+        self.assertRedirects(res, 'http://testserver/edit/author/%d/update/' % pk)
 
     def test_create_with_special_properties(self):
         res = self.client.get('/edit/authors/create/special/')
@@ -144,6 +156,18 @@ class UpdateViewTests(TestCase):
         self.assertEqual(res.status_code, 302)
         self.assertRedirects(res, 'http://testserver/edit/authors/create/')
         self.assertQuerysetEqual(Author.objects.all(), ['<Author: Randall Munroe (author of xkcd)>'])
+
+    def test_update_with_interpolated_redirect(self):
+        a = Author.objects.create(
+            name='Randall Munroe',
+            slug='randall-munroe',
+        )
+        res = self.client.post('/edit/author/%d/update/interpolate_redirect/' % a.pk,
+                        {'name': 'Randall Munroe (author of xkcd)', 'slug': 'randall-munroe'})
+        self.assertQuerysetEqual(Author.objects.all(), ['<Author: Randall Munroe (author of xkcd)>'])
+        self.assertEqual(res.status_code, 302)
+        pk = Author.objects.all()[0].pk
+        self.assertRedirects(res, 'http://testserver/edit/author/%d/update/' % pk)
 
     def test_update_with_special_properties(self):
         a = Author.objects.create(
