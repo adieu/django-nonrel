@@ -119,6 +119,9 @@ class Collector(object):
         can be null.
         """
 
+        if not connections[self.using].features.supports_deleting_related_objects:
+            collect_related = False
+
         new_objs = self.add(objs, source, nullable)
         if not new_objs:
             return

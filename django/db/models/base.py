@@ -272,6 +272,7 @@ class Model(object):
     _deferred = False
 
     def __init__(self, *args, **kwargs):
+        self._entity_exists = kwargs.pop('__entity_exists', False)
         signals.pre_init.send(sender=self.__class__, args=args, kwargs=kwargs)
 
         # Set up the storage for instance state
@@ -361,6 +362,7 @@ class Model(object):
                     pass
             if kwargs:
                 raise TypeError("'%s' is an invalid keyword argument for this function" % kwargs.keys()[0])
+        self._original_pk = self.pk if self._meta.pk is not None else None
         signals.post_init.send(sender=self.__class__, instance=self)
 
     def __repr__(self):
@@ -468,6 +470,7 @@ class Model(object):
         ('raw', 'cls', and 'origin').
         """
         using = using or router.db_for_write(self.__class__, instance=self)
+        entity_exists = bool(self._entity_exists and self._original_pk == self.pk)
         connection = connections[using]
         assert not (force_insert and force_update)
         if cls is None:
@@ -514,7 +517,19 @@ class Model(object):
             pk_set = pk_val is not None
             record_exists = True
             manager = cls._base_manager
-            if pk_set:
+            # TODO/NONREL: Some backends could emulate force_insert/_update
+            # with an optimistic transaction, but since it's costly we should
+            # only do it when the user explicitly wants it.
+            # By adding support for an optimistic locking transaction
+            # in Django (SQL: SELECT ... FOR UPDATE) we could even make that
+            # part fully reusable on all backends (the current .exists()
+            # check below isn't really safe if you have lots of concurrent
+            # requests. BTW, and neither is QuerySet.get_or_create).
+            try_update = connection.features.distinguishes_insert_from_update
+            if not try_update:
+                record_exists = False
+
+            if try_update and pk_set:
                 # Determine whether a record with the primary key already exists.
                 if (force_update or (not force_insert and
                         manager.using(using).filter(pk=pk_val).exists())):
@@ -534,13 +549,18 @@ class Model(object):
                     order_value = manager.using(using).filter(**{field.name: getattr(self, field.attname)}).count()
                     self._order = order_value
 
+                if connection.features.distinguishes_insert_from_update:
+                    add = True
+                else:
+                    add = not entity_exists
+
                 if not pk_set:
                     if force_update:
                         raise ValueError("Cannot force an update in save() with no primary key.")
-                    values = [(f, f.get_db_prep_save(raw and getattr(self, f.attname) or f.pre_save(self, True), connection=connection))
+                    values = [(f, f.get_db_prep_save(raw and getattr(self, f.attname) or f.pre_save(self, add), connection=connection))
                         for f in meta.local_fields if not isinstance(f, AutoField)]
                 else:
-                    values = [(f, f.get_db_prep_save(raw and getattr(self, f.attname) or f.pre_save(self, True), connection=connection))
+                    values = [(f, f.get_db_prep_save(raw and getattr(self, f.attname) or f.pre_save(self, add), connection=connection))
                         for f in meta.local_fields]
 
                 record_exists = False
@@ -564,8 +584,15 @@ class Model(object):
 
         # Signal that the save is complete
         if origin and not meta.auto_created:
+            if connection.features.distinguishes_insert_from_update:
+                created = not record_exists
+            else:
+                created = not entity_exists
             signals.post_save.send(sender=origin, instance=self,
-                created=(not record_exists), raw=raw, using=using)
+                created=created, raw=raw, using=using)
+
+        self._entity_exists = True
+        self._original_pk = self.pk
 
 
     save_base.alters_data = True
@@ -577,6 +604,9 @@ class Model(object):
         collector = Collector(using=using)
         collector.collect([self])
         collector.delete()
+
+        self._entity_exists = False
+        self._original_pk = None
 
     delete.alters_data = True
 
