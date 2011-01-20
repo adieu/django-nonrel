@@ -32,7 +32,7 @@ def delete_selected(modeladmin, request, queryset):
 
     # Populate deletable_objects, a data structure of all related objects that
     # will also be deleted.
-    deletable_objects, perms_needed = get_deleted_objects(
+    deletable_objects, perms_needed, protected = get_deleted_objects(
         queryset, opts, request.user, modeladmin.admin_site, using)
 
     # The user has already confirmed the deletion.
@@ -52,12 +52,23 @@ def delete_selected(modeladmin, request, queryset):
         # Return None to display the change list page again.
         return None
 
+    if len(queryset) == 1:
+        objects_name = force_unicode(opts.verbose_name)
+    else:
+        objects_name = force_unicode(opts.verbose_name_plural)
+
+    if perms_needed or protected:
+        title = _("Cannot delete %(name)s") % {"name": objects_name}
+    else:
+        title = _("Are you sure?")
+
     context = {
-        "title": _("Are you sure?"),
-        "object_name": force_unicode(opts.verbose_name),
+        "title": title,
+        "objects_name": objects_name,
         "deletable_objects": [deletable_objects],
         'queryset': queryset,
         "perms_lacking": perms_needed,
+        "protected": protected,
         "opts": opts,
         "root_path": modeladmin.admin_site.root_path,
         "app_label": app_label,
