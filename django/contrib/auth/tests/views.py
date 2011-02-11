@@ -106,7 +106,7 @@ class PasswordResetTest(AuthViewsTestCase):
 
     def test_confirm_overflow_user(self):
         # Ensure that we get a 200 response for a base36 user id that overflows int
-        response = self.client.get('/reset/zzzzzzzzzzzzz-1-1/')
+        response = self.client.get('/reset/zzzzzzzzzzzzz/1-1/')
         self.assertEquals(response.status_code, 200)
         self.assert_("The password reset link was invalid" in response.content)
 

@@ -180,7 +180,7 @@ def password_reset_confirm(request, uidb64=None, token=None,
     try:
         uid = urlsafe_base64_decode(str(uidb64))
         user = User.objects.get(id=uid)
-    except (ValueError, User.DoesNotExist):
+    except (TypeError, ValueError, User.DoesNotExist):
         user = None
 
     if user is not None and token_generator.check_token(user, token):
