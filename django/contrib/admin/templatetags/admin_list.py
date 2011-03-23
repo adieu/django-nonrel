@@ -2,8 +2,8 @@ import datetime
 
 from django.conf import settings
 from django.contrib.admin.util import lookup_field, display_for_field, label_for_field
-from django.contrib.admin.views.main import ALL_VAR, EMPTY_CHANGELIST_VALUE
-from django.contrib.admin.views.main import ORDER_VAR, ORDER_TYPE_VAR, PAGE_VAR, SEARCH_VAR
+from django.contrib.admin.views.main import (ALL_VAR, EMPTY_CHANGELIST_VALUE,
+    ORDER_VAR, ORDER_TYPE_VAR, PAGE_VAR, SEARCH_VAR)
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from django.utils import formats
@@ -139,6 +139,8 @@ def items_for_result(cl, result, form):
             result_repr = EMPTY_CHANGELIST_VALUE
         else:
             if f is None:
+                if field_name == u'action_checkbox':
+                    row_class = ' class="action-checkbox"'
                 allow_tags = getattr(attr, 'allow_tags', False)
                 boolean = getattr(attr, 'boolean', False)
                 if boolean:
@@ -153,8 +155,6 @@ def items_for_result(cl, result, form):
                 else:
                     result_repr = mark_safe(result_repr)
             else:
-                if value is None:
-                    result_repr = EMPTY_CHANGELIST_VALUE
                 if isinstance(f.rel, models.ManyToOneRel):
                     field_val = getattr(result, f.name)
                     if field_val is None:
@@ -163,7 +163,9 @@ def items_for_result(cl, result, form):
                         result_repr = escape(field_val)
                 else:
                     result_repr = display_for_field(value, f)
-                if isinstance(f, models.DateField) or isinstance(f, models.TimeField):
+                if isinstance(f, models.DateField)\
+                or isinstance(f, models.TimeField)\
+                or isinstance(f, models.ForeignKey):
                     row_class = ' class="nowrap"'
         if force_unicode(result_repr) == '':
             result_repr = mark_safe('&nbsp;')
@@ -186,7 +188,9 @@ def items_for_result(cl, result, form):
             # By default the fields come from ModelAdmin.list_editable, but if we pull
             # the fields out of the form instead of list_editable custom admins
             # can provide fields on a per request basis
-            if form and field_name in form.fields:
+            if (form and field_name in form.fields and not (
+                    field_name == cl.model._meta.pk.name and
+                        form[cl.model._meta.pk.name].is_hidden)):
                 bf = form[field_name]
                 result_repr = mark_safe(force_unicode(bf.errors) + force_unicode(bf))
             else:
@@ -195,13 +199,22 @@ def items_for_result(cl, result, form):
     if form and not form[cl.model._meta.pk.name].is_hidden:
         yield mark_safe(u'<td>%s</td>' % force_unicode(form[cl.model._meta.pk.name]))
 
+class ResultList(list):
+    # Wrapper class used to return items in a list_editable
+    # changelist, annotated with the form object for error
+    # reporting purposes. Needed to maintain backwards
+    # compatibility with existing admin templates.
+    def __init__(self, form, *items):
+        self.form = form
+        super(ResultList, self).__init__(*items)
+
 def results(cl):
     if cl.formset:
         for res, form in zip(cl.result_list, cl.formset.forms):
-            yield list(items_for_result(cl, res, form))
+            yield ResultList(form, items_for_result(cl, res, form))
     else:
         for res in cl.result_list:
-            yield list(items_for_result(cl, res, None))
+            yield ResultList(None, items_for_result(cl, res, None))
 
 def result_hidden_fields(cl):
     if cl.formset:

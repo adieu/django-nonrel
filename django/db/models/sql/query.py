@@ -31,7 +31,6 @@ class RawQuery(object):
     """
 
     def __init__(self, sql, using, params=None):
-        self.validate_sql(sql)
         self.params = params or ()
         self.sql = sql
         self.using = using
@@ -61,11 +60,6 @@ class RawQuery(object):
         converter = connections[self.using].introspection.table_name_converter
         return [converter(column_meta[0])
                 for column_meta in self.cursor.description]
-
-    def validate_sql(self, sql):
-        if not sql.lower().strip().startswith('select'):
-            raise InvalidQuery('Raw queries are limited to SELECT queries. Use '
-                               'connection.cursor directly for other types of queries.')
 
     def __iter__(self):
         # Always execute a new query for a new iterator.
@@ -444,6 +438,8 @@ class Query(object):
             "Cannot combine a unique query with a non-unique query."
 
         self.remove_inherited_models()
+        l_tables = set([a for a in self.tables if self.alias_refcount[a]])
+        r_tables = set([a for a in rhs.tables if rhs.alias_refcount[a]])
         # Work out how to relabel the rhs aliases, if necessary.
         change_map = {}
         used = set()
@@ -461,13 +457,19 @@ class Query(object):
             first = False
 
         # So that we don't exclude valid results in an "or" query combination,
-        # the first join that is exclusive to the lhs (self) must be converted
+        # all joins exclusive to either the lhs or the rhs must be converted
         # to an outer join.
         if not conjunction:
-            for alias in self.tables[1:]:
-                if self.alias_refcount[alias] == 1:
-                    self.promote_alias(alias, True)
-                    break
+            # Update r_tables aliases.
+            for alias in change_map:
+                if alias in r_tables:
+                    r_tables.remove(alias)
+                    r_tables.add(change_map[alias])
+            # Find aliases that are exclusive to rhs or lhs.
+            # These are promoted to outer joins.
+            outer_aliases = (l_tables | r_tables) - (l_tables & r_tables)
+            for alias in outer_aliases:
+                self.promote_alias(alias, True)
 
         # Now relabel a copy of the rhs where-clause and add it to the current
         # one.

@@ -4,8 +4,8 @@ from django.db.models.fields import FieldDoesNotExist
 from django.forms.models import (BaseModelForm, BaseModelFormSet, fields_for_model,
     _get_foreign_key)
 from django.contrib.admin.util import get_fields_from_path, NotRelationField
-from django.contrib.admin.options import flatten_fieldsets, BaseModelAdmin
-from django.contrib.admin.options import HORIZONTAL, VERTICAL
+from django.contrib.admin.options import (flatten_fieldsets, BaseModelAdmin,
+    HORIZONTAL, VERTICAL)
 
 
 __all__ = ['validate']
@@ -46,9 +46,8 @@ def validate(cls, model):
     if hasattr(cls, 'list_display_links'):
         check_isseq(cls, 'list_display_links', cls.list_display_links)
         for idx, field in enumerate(cls.list_display_links):
-            fetch_attr(cls, model, opts, 'list_display_links[%d]' % idx, field)
             if field not in cls.list_display:
-                raise ImproperlyConfigured("'%s.list_display_links[%d]'"
+                raise ImproperlyConfigured("'%s.list_display_links[%d]' "
                         "refers to '%s' which is not defined in 'list_display'."
                         % (cls.__name__, idx, field))
 
@@ -130,16 +129,7 @@ def validate(cls, model):
             get_field(cls, model, opts, 'ordering[%d]' % idx, field)
 
     if hasattr(cls, "readonly_fields"):
-        check_isseq(cls, "readonly_fields", cls.readonly_fields)
-        for idx, field in enumerate(cls.readonly_fields):
-            if not callable(field):
-                if not hasattr(cls, field):
-                    if not hasattr(model, field):
-                        try:
-                            opts.get_field(field)
-                        except models.FieldDoesNotExist:
-                            raise ImproperlyConfigured("%s.readonly_fields[%d], %r is not a callable or an attribute of %r or found in the model %r."
-                                % (cls.__name__, idx, field, cls.__name__, model._meta.object_name))
+        check_readonly_fields(cls, model, opts)
 
     # list_select_related = False
     # save_as = False
@@ -199,6 +189,9 @@ def validate_inline(cls, parent, parent_model):
             raise ImproperlyConfigured("%s cannot exclude the field "
                     "'%s' - this is the foreign key to the parent model "
                     "%s." % (cls.__name__, fk.name, parent_model.__name__))
+
+    if hasattr(cls, "readonly_fields"):
+        check_readonly_fields(cls, cls.model, cls.model._meta)
 
 def validate_base(cls, model):
     opts = model._meta
@@ -385,3 +378,15 @@ def fetch_attr(cls, model, opts, label, field):
     except AttributeError:
         raise ImproperlyConfigured("'%s.%s' refers to '%s' that is neither a field, method or property of model '%s'."
             % (cls.__name__, label, field, model.__name__))
+
+def check_readonly_fields(cls, model, opts):
+    check_isseq(cls, "readonly_fields", cls.readonly_fields)
+    for idx, field in enumerate(cls.readonly_fields):
+        if not callable(field):
+            if not hasattr(cls, field):
+                if not hasattr(model, field):
+                    try:
+                        opts.get_field(field)
+                    except models.FieldDoesNotExist:
+                        raise ImproperlyConfigured("%s.readonly_fields[%d], %r is not a callable or an attribute of %r or found in the model %r."
+                            % (cls.__name__, idx, field, cls.__name__, model._meta.object_name))

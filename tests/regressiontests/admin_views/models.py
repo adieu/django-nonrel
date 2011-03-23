@@ -133,6 +133,13 @@ class ArticleAdmin(admin.ModelAdmin):
         ).send()
         return super(ArticleAdmin, self).save_model(request, obj, form, change)
 
+class RowLevelChangePermissionModel(models.Model):
+    name = models.CharField(max_length=100, blank=True)
+
+class RowLevelChangePermissionModelAdmin(admin.ModelAdmin):
+    def has_change_permission(self, request, obj=None):
+        """ Only allow changing objects with even id number """
+        return request.user.is_staff and (obj is not None) and (obj.id % 2 == 0)
 
 class CustomArticle(models.Model):
     content = models.TextField()
@@ -245,13 +252,13 @@ class BasePersonModelFormSet(BaseModelFormSet):
             person = person_dict.get('id')
             alive = person_dict.get('alive')
             if person and alive and person.name == "Grace Hopper":
-                raise forms.ValidationError, "Grace is not a Zombie"
+                raise forms.ValidationError("Grace is not a Zombie")
 
 class PersonAdmin(admin.ModelAdmin):
     list_display = ('name', 'gender', 'alive')
     list_editable = ('gender', 'alive')
     list_filter = ('gender',)
-    search_fields = (u'name',)
+    search_fields = ('^name',)
     ordering = ["id"]
     save_as = True
 
@@ -438,7 +445,7 @@ class Recommendation(Title):
     recommender = models.ForeignKey(Recommender)
 
 class RecommendationAdmin(admin.ModelAdmin):
-    search_fields = ('titletranslation__text', 'recommender__titletranslation__text',)
+    search_fields = ('=titletranslation__text', '=recommender__titletranslation__text',)
 
 class Collector(models.Model):
     name = models.CharField(max_length=100)
@@ -523,9 +530,12 @@ class LinkInline(admin.TabularInline):
 
 
 class Post(models.Model):
-    title = models.CharField(max_length=100)
-    content = models.TextField()
-    posted = models.DateField(default=datetime.date.today)
+    title = models.CharField(max_length=100, help_text="Some help text for the title (with unicode ŠĐĆŽćžšđ)")
+    content = models.TextField(help_text="Some help text for the content (with unicode ŠĐĆŽćžšđ)")
+    posted = models.DateField(
+            default=datetime.date.today,
+            help_text="Some help text for the date (with unicode ŠĐĆŽćžšđ)"
+    )
     public = models.NullBooleanField()
 
     def awesomeness_level(self):
@@ -669,7 +679,85 @@ class Answer(models.Model):
 class Reservation(models.Model):
     start_date = models.DateTimeField()
     price = models.IntegerField()
-    
+
+
+DRIVER_CHOICES = (
+    (u'bill', 'Bill G'),
+    (u'steve', 'Steve J'),
+)
+
+RESTAURANT_CHOICES = (
+    (u'indian', u'A Taste of India'),
+    (u'thai', u'Thai Pography'),
+    (u'pizza', u'Pizza Mama'),
+)
+
+class FoodDelivery(models.Model):
+    reference = models.CharField(max_length=100)
+    driver = models.CharField(max_length=100, choices=DRIVER_CHOICES, blank=True)
+    restaurant = models.CharField(max_length=100, choices=RESTAURANT_CHOICES, blank=True)
+
+    class Meta:
+        unique_together = (("driver", "restaurant"),)
+
+class FoodDeliveryAdmin(admin.ModelAdmin):
+    list_display=('reference', 'driver', 'restaurant')
+    list_editable = ('driver', 'restaurant')
+
+class Paper(models.Model):
+    title = models.CharField(max_length=30)
+    author = models.CharField(max_length=30, blank=True, null=True)
+
+class CoverLetter(models.Model):
+    author = models.CharField(max_length=30)
+    date_written = models.DateField(null=True, blank=True)
+
+    def __unicode__(self):
+        return self.author
+
+class PaperAdmin(admin.ModelAdmin):
+    """
+    A ModelAdin with a custom queryset() method that uses only(), to test
+    verbose_name display in messages shown after adding Paper instances.
+    """
+
+    def queryset(self, request):
+        return super(PaperAdmin, self).queryset(request).only('title')
+
+class CoverLetterAdmin(admin.ModelAdmin):
+    """
+    A ModelAdin with a custom queryset() method that uses only(), to test
+    verbose_name display in messages shown after adding CoverLetter instances.
+    Note that the CoverLetter model defines a __unicode__ method.
+    """
+
+    def queryset(self, request):
+        #return super(CoverLetterAdmin, self).queryset(request).only('author')
+        return super(CoverLetterAdmin, self).queryset(request).defer('date_written')
+
+class Story(models.Model):
+    title = models.CharField(max_length=100)
+    content = models.TextField()
+
+class StoryForm(forms.ModelForm):
+    class Meta:
+        widgets = {'title': forms.HiddenInput}
+
+class StoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'title', 'content')
+    list_display_links = ('title',) # 'id' not in list_display_links
+    list_editable = ('content', )
+    form = StoryForm
+
+class OtherStory(models.Model):
+    title = models.CharField(max_length=100)
+    content = models.TextField()
+
+class OtherStoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'title', 'content')
+    list_display_links = ('title', 'id') # 'id' in list_display_links
+    list_editable = ('content', )
+
 admin.site.register(Article, ArticleAdmin)
 admin.site.register(CustomArticle, CustomArticleAdmin)
 admin.site.register(Section, save_as=True, inlines=[ArticleInline])
@@ -706,6 +794,12 @@ admin.site.register(CyclicOne)
 admin.site.register(CyclicTwo)
 admin.site.register(WorkHour, WorkHourAdmin)
 admin.site.register(Reservation)
+admin.site.register(FoodDelivery, FoodDeliveryAdmin)
+admin.site.register(RowLevelChangePermissionModel, RowLevelChangePermissionModelAdmin)
+admin.site.register(Paper, PaperAdmin)
+admin.site.register(CoverLetter, CoverLetterAdmin)
+admin.site.register(Story, StoryAdmin)
+admin.site.register(OtherStory, OtherStoryAdmin)
 
 # We intentionally register Promo and ChapterXtra1 but not Chapter nor ChapterXtra2.
 # That way we cover all four cases:

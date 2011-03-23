@@ -856,13 +856,13 @@ class TestIsBoundBehavior(TestCase):
             'form-INITIAL_FORMS': u'0',
         }
         formset = ArticleFormSet(data)
-        self.assertEquals(0, formset.initial_form_count())
-        self.assertEquals(1, formset.total_form_count())
+        self.assertEqual(0, formset.initial_form_count())
+        self.assertEqual(1, formset.total_form_count())
         self.assertTrue(formset.is_bound)
         self.assertTrue(formset.forms[0].is_bound)
         self.assertTrue(formset.is_valid())
         self.assertTrue(formset.forms[0].is_valid())
-        self.assertEquals([{}], formset.cleaned_data)
+        self.assertEqual([{}], formset.cleaned_data)
 
 
     def test_form_errors_are_cought_by_formset(self):
@@ -876,7 +876,29 @@ class TestIsBoundBehavior(TestCase):
         }
         formset = ArticleFormSet(data)
         self.assertFalse(formset.is_valid())
-        self.assertEquals([{}, {'pub_date': [u'This field is required.']}], formset.errors)
+        self.assertEqual([{}, {'pub_date': [u'This field is required.']}], formset.errors)
+
+    def test_empty_forms_are_unbound(self):
+        data = {
+            'form-TOTAL_FORMS': u'1',
+            'form-INITIAL_FORMS': u'0',
+            'form-0-title': u'Test',
+            'form-0-pub_date': u'1904-06-16',
+        }
+        unbound_formset = ArticleFormSet()
+        bound_formset = ArticleFormSet(data)
+
+        empty_forms = []
+
+        empty_forms.append(unbound_formset.empty_form)
+        empty_forms.append(bound_formset.empty_form)
+
+        # Empty forms should be unbound
+        self.assertFalse(empty_forms[0].is_bound)
+        self.assertFalse(empty_forms[1].is_bound)
+
+        # The empty forms should be equal.
+        self.assertEqual(empty_forms[0].as_p(), empty_forms[1].as_p())
 
 class TestEmptyFormSet(TestCase): 
     "Test that an empty formset still calls clean()"

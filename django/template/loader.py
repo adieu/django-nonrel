@@ -141,12 +141,12 @@ def find_template_source(name, dirs=None):
     # For backward compatibility
     import warnings
     warnings.warn(
-        "`django.template.loaders.find_template_source` is deprecated; use `django.template.loaders.find_template` instead.",
+        "`django.template.loader.find_template_source` is deprecated; use `django.template.loader.find_template` instead.",
         DeprecationWarning
     )
     template, origin = find_template(name, dirs)
     if hasattr(template, 'render'):
-        raise Exception("Found a compiled template that is incompatible with the deprecated `django.template.loaders.find_template_source` function.")
+        raise Exception("Found a compiled template that is incompatible with the deprecated `django.template.loader.find_template_source` function.")
     return template, origin
 
 def get_template(template_name):
@@ -179,20 +179,27 @@ def render_to_string(template_name, dictionary=None, context_instance=None):
         t = select_template(template_name)
     else:
         t = get_template(template_name)
-    if context_instance:
-        context_instance.update(dictionary)
-    else:
-        context_instance = Context(dictionary)
-    return t.render(context_instance)
+    if not context_instance:
+        return t.render(Context(dictionary))
+    # Add the dictionary to the context stack, ensuring it gets removed again
+    # to keep the context_instance in the same state it started in.
+    context_instance.update(dictionary)
+    try:
+        return t.render(context_instance)
+    finally:
+        context_instance.pop()
 
 def select_template(template_name_list):
     "Given a list of template names, returns the first that can be loaded."
+    not_found = []
     for template_name in template_name_list:
         try:
             return get_template(template_name)
-        except TemplateDoesNotExist:
+        except TemplateDoesNotExist, e:
+            if e.args[0] not in not_found:
+                not_found.append(e.args[0])
             continue
     # If we get here, none of the templates could be loaded
-    raise TemplateDoesNotExist(', '.join(template_name_list))
+    raise TemplateDoesNotExist(', '.join(not_found))
 
 add_to_builtins('django.template.loader_tags')

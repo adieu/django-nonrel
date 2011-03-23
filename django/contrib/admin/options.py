@@ -1,10 +1,9 @@
 from django import forms, template
 from django.forms.formsets import all_valid
-from django.forms.models import modelform_factory, modelformset_factory, inlineformset_factory
-from django.forms.models import BaseInlineFormSet
+from django.forms.models import (modelform_factory, modelformset_factory,
+    inlineformset_factory, BaseInlineFormSet)
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.admin import widgets
-from django.contrib.admin import helpers
+from django.contrib.admin import widgets, helpers
 from django.contrib.admin.util import unquote, flatten_fieldsets, get_deleted_objects, model_format_dict
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_protect
@@ -665,7 +664,7 @@ class ModelAdmin(BaseModelAdmin):
         """
         obj.save()
 
-    def delete_model(self, requet, obj):
+    def delete_model(self, request, obj):
         """
         Given a model instance delete it from the database.
         """
@@ -748,9 +747,16 @@ class ModelAdmin(BaseModelAdmin):
         Determines the HttpResponse for the change_view stage.
         """
         opts = obj._meta
+
+        # Handle proxy models automatically created by .only() or .defer()
+        verbose_name = opts.verbose_name
+        if obj._deferred:
+            opts_ = opts.proxy_for_model._meta
+            verbose_name = opts_.verbose_name
+
         pk_value = obj._get_pk_val()
 
-        msg = _('The %(name)s "%(obj)s" was changed successfully.') % {'name': force_unicode(opts.verbose_name), 'obj': force_unicode(obj)}
+        msg = _('The %(name)s "%(obj)s" was changed successfully.') % {'name': force_unicode(verbose_name), 'obj': force_unicode(obj)}
         if "_continue" in request.POST:
             self.message_user(request, msg + ' ' + _("You may edit it again below."))
             if "_popup" in request.REQUEST:
@@ -758,15 +764,21 @@ class ModelAdmin(BaseModelAdmin):
             else:
                 return HttpResponseRedirect(request.path)
         elif "_saveasnew" in request.POST:
-            msg = _('The %(name)s "%(obj)s" was added successfully. You may edit it again below.') % {'name': force_unicode(opts.verbose_name), 'obj': obj}
+            msg = _('The %(name)s "%(obj)s" was added successfully. You may edit it again below.') % {'name': force_unicode(verbose_name), 'obj': obj}
             self.message_user(request, msg)
             return HttpResponseRedirect("../%s/" % pk_value)
         elif "_addanother" in request.POST:
-            self.message_user(request, msg + ' ' + (_("You may add another %s below.") % force_unicode(opts.verbose_name)))
+            self.message_user(request, msg + ' ' + (_("You may add another %s below.") % force_unicode(verbose_name)))
             return HttpResponseRedirect("../add/")
         else:
             self.message_user(request, msg)
-            return HttpResponseRedirect("../")
+            # Figure out where to redirect. If the user has change permission,
+            # redirect to the change-list page for this object. Otherwise,
+            # redirect to the admin index.
+            if self.has_change_permission(request, None):
+                return HttpResponseRedirect('../')
+            else:
+                return HttpResponseRedirect('../../../')
 
     def response_action(self, request, queryset):
         """

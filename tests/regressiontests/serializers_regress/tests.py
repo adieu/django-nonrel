@@ -222,9 +222,6 @@ The end."""),
     (data_obj, 180, USStateData, "MA"),
     (data_obj, 181, USStateData, None),
     (data_obj, 182, USStateData, ""),
-    (data_obj, 190, XMLData, "<foo></foo>"),
-    (data_obj, 191, XMLData, None),
-    (data_obj, 192, XMLData, ""),
 
     (generic_obj, 200, GenericData, ['Generic Object 1', 'tag1', 'tag2']),
     (generic_obj, 201, GenericData, ['Generic Object 2', 'tag2', 'tag3']),
@@ -384,7 +381,7 @@ def serializerTest(format, self):
     # Assert that the number of objects deserialized is the
     # same as the number that was serialized.
     for klass, count in instance_count.items():
-        self.assertEquals(count, klass.objects.count())
+        self.assertEqual(count, klass.objects.count())
 
 def fieldsTest(format, self):
     obj = ComplexModel(field1='first', field2='second', field3='third')

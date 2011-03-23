@@ -61,8 +61,10 @@ class BasicTestCase(TestCase):
         command_output = new_io.getvalue().strip()
         self.assertEqual(command_output, 'Superuser created successfully.')
         u = User.objects.get(username="joe")
-        self.assertEquals(u.email, 'joe@somewhere.org')
-        self.assertTrue(u.check_password(''))
+        self.assertEqual(u.email, 'joe@somewhere.org')
+
+        # created password should be unusable
+        self.assertFalse(u.has_usable_password())
 
         # We can supress output on the management command
         new_io = StringIO()
@@ -76,8 +78,9 @@ class BasicTestCase(TestCase):
         command_output = new_io.getvalue().strip()
         self.assertEqual(command_output, '')
         u = User.objects.get(username="joe2")
-        self.assertEquals(u.email, 'joe2@somewhere.org')
-        self.assertTrue(u.check_password(''))
+        self.assertEqual(u.email, 'joe2@somewhere.org')
+        self.assertFalse(u.has_usable_password())
+
 
         new_io = StringIO()
         call_command("createsuperuser",
@@ -87,6 +90,6 @@ class BasicTestCase(TestCase):
             stdout=new_io
         )
         u = User.objects.get(username="joe+admin@somewhere.org")
-        self.assertEquals(u.email, 'joe@somewhere.org')
-        self.assertTrue(u.check_password(''))
+        self.assertEqual(u.email, 'joe@somewhere.org')
+        self.assertFalse(u.has_usable_password())
 

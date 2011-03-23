@@ -9,8 +9,7 @@ from django.utils.safestring import mark_safe
 from django.utils.text import capfirst
 from django.utils.encoding import force_unicode, smart_unicode, smart_str
 from django.utils.translation import ungettext
-from django.core.urlresolvers import reverse, NoReverseMatch
-from django.utils.datastructures import SortedDict
+from django.core.urlresolvers import reverse
 
 
 def quote(s):
@@ -249,7 +248,7 @@ def label_for_field(name, model, model_admin=None, return_attr=False):
             else:
                 message = "Unable to lookup '%s' on %s" % (name, model._meta.object_name)
                 if model_admin:
-                    message += " or %s" % (model_admin.__name__,)
+                    message += " or %s" % (model_admin.__class__.__name__,)
                 raise AttributeError(message)
 
             if hasattr(attr, "short_description"):
@@ -265,6 +264,13 @@ def label_for_field(name, model, model_admin=None, return_attr=False):
         return (label, attr)
     else:
         return label
+
+def help_text_for_field(name, model):
+    try:
+        help_text = model._meta.get_field_by_name(name)[0].help_text
+    except models.FieldDoesNotExist:
+        help_text = ""
+    return smart_unicode(help_text)
 
 
 def display_for_field(value, field):

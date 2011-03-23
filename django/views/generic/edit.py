@@ -75,7 +75,17 @@ class ModelFormMixin(FormMixin, SingleObjectMixin):
         if self.form_class:
             return self.form_class
         else:
-            model = self.get_queryset().model
+            if self.model is not None:
+                # If a model has been explicitly provided, use it
+                model = self.model
+            elif hasattr(self, 'object') and self.object is not None:
+                # If this view is operating on a single object, use
+                # the class of that object
+                model = self.object.__class__
+            else:
+                # Try to get a queryset and extract the model class
+                # from that
+                model = self.get_queryset().model
             return model_forms.modelform_factory(model)
 
     def get_form_kwargs(self):
@@ -161,11 +171,6 @@ class BaseCreateView(ModelFormMixin, ProcessFormView):
         self.object = None
         return super(BaseCreateView, self).post(request, *args, **kwargs)
 
-    # PUT is a valid HTTP verb for creating (with a known URL) or editing an
-    # object, note that browsers only support POST for now.
-    def put(self, *args, **kwargs):
-        return self.post(*args, **kwargs)
-
 
 class CreateView(SingleObjectTemplateResponseMixin, BaseCreateView):
     """
@@ -188,11 +193,6 @@ class BaseUpdateView(ModelFormMixin, ProcessFormView):
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         return super(BaseUpdateView, self).post(request, *args, **kwargs)
-
-    # PUT is a valid HTTP verb for creating (with a known URL) or editing an
-    # object, note that browsers only support POST for now.
-    def put(self, *args, **kwargs):
-        return self.post(*args, **kwargs)
 
 
 class UpdateView(SingleObjectTemplateResponseMixin, BaseUpdateView):

@@ -22,6 +22,7 @@ class ContentTypesTests(TestCase):
     def tearDown(self):
         settings.DEBUG = self.old_DEBUG
         Site._meta.installed = self.old_Site_meta_installed
+        ContentType.objects.clear_cache()
 
     def test_lookup_cache(self):
         """
@@ -63,9 +64,12 @@ class ContentTypesTests(TestCase):
         obj = User.objects.create(username="john")
 
         if Site._meta.installed:
+            current_site = Site.objects.get_current()
             response = shortcut(request, user_ct.id, obj.id)
-            self.assertEqual("http://example.com/users/john/", response._headers.get("location")[1])
+            self.assertEqual("http://%s/users/john/" % current_site.domain,
+                             response._headers.get("location")[1])
 
         Site._meta.installed = False
         response = shortcut(request, user_ct.id, obj.id)
-        self.assertEqual("http://Example.com/users/john/", response._headers.get("location")[1])
+        self.assertEqual("http://Example.com/users/john/",
+                         response._headers.get("location")[1])

@@ -2,25 +2,26 @@
 Contributing to Django
 ======================
 
-If you think working *with* Django is fun, wait until you start working *on* it.
-We're passionate about helping Django users make the jump to contributing members
-of the community, so there are many ways you can help Django's development:
+If you think working *with* Django is fun, wait until you start working *on*
+it. We're passionate about helping Django users make the jump to contributing
+members of the community, so there are many ways you can help Django's
+development:
 
-    * Blog about Django.  We syndicate all the Django blogs we know about on
+    * Blog about Django. We syndicate all the Django blogs we know about on
       the `community page`_; contact jacob@jacobian.org if you've got a blog
       you'd like to see on that page.
 
-    * Report bugs and request features in our `ticket tracker`_.  Please read
+    * Report bugs and request features in our `ticket tracker`_. Please read
       `Reporting bugs`_, below, for the details on how we like our bug reports
       served up.
 
-    * Submit patches for new and/or fixed behavior.  Please read `Submitting
+    * Submit patches for new and/or fixed behavior. Please read `Submitting
       patches`_, below, for details on how to submit a patch. If you're looking
       for an easy way to start contributing to Django have a look at the
       `easy-pickings`_ tickets.
 
     * Join the `django-developers`_ mailing list and share your ideas for how
-      to improve Django.  We're always open to suggestions, although we're
+      to improve Django. We're always open to suggestions, although we're
       likely to be skeptical of large-scale suggestions without some code to
       back it up.
 
@@ -32,17 +33,25 @@ community. The rest of this document describes the details of how our community
 works and how it handles bugs, mailing lists, and all the other minutiae of
 Django development.
 
+.. seealso::
+
+    This document contains specific details for contributing to
+    Django. However, many new contributors find this guide confusing
+    or intimidating at first. For a simpler introduction
+    to becoming a contributor please see the :doc:`/howto/contribute` guide.
+
 .. _reporting-bugs:
 
 Reporting bugs
 ==============
 
 Well-written bug reports are *incredibly* helpful. However, there's a certain
-amount of overhead involved in working with any bug tracking system, so your
-help in keeping our ticket tracker as useful as possible is appreciated.  In
+amount of overhead involved in working with any bug tracking system so your
+help in keeping our ticket tracker as useful as possible is appreciated. In
 particular:
 
-    * **Do** read the :doc:`FAQ </faq/index>` to see if your issue might be a well-known question.
+    * **Do** read the :doc:`FAQ </faq/index>` to see if your issue might
+      be a well-known question.
 
     * **Do** `search the tracker`_ to see if your issue has already been filed.
 
@@ -56,16 +65,17 @@ particular:
       A minimal example that illustrates the bug in a nice small test case
       is the best possible bug report.
 
-    * **Don't** use the ticket system to ask support questions.  Use the
+    * **Don't** use the ticket system to ask support questions. Use the
       `django-users`_ list, or the `#django`_ IRC channel for that.
 
     * **Don't** use the ticket system to make large-scale feature requests.
-      We like to discuss any big changes to Django's core on the `django-developers`_
-      list before actually working on them.
+      We like to discuss any big changes to Django's core on the
+      `django-developers`_ list before actually working on them.
 
-    * **Don't** reopen issues that have been marked "wontfix". This mark means
-      that the decision has been made that we can't or won't fix this particular
-      issue.  If you're not sure why, please ask on `django-developers`_.
+    * **Don't** reopen issues that have been marked "wontfix". This mark
+      means that the decision has been made that we can't or won't fix
+      this particular issue. If you're not sure why, please ask
+      on `django-developers`_.
 
     * **Don't** use the ticket tracker for lengthy discussions, because they're
       likely to get lost. If a particular ticket is controversial, please move
@@ -73,8 +83,8 @@ particular:
 
     * **Don't** post to django-developers just to announce that you have filed
       a bug report. All the tickets are mailed to another list
-      (`django-updates`_), which is tracked by developers and triagers, so we
-      see them as they are filed.
+      (`django-updates`_), which is tracked by developers and interested
+      community members; we see them as they are filed.
 
 .. _django-updates: http://groups.google.com/group/django-updates
 
@@ -90,23 +100,23 @@ not publicly readable.
 In the event of a confirmed vulnerability in Django itself, we will take the
 following actions:
 
-    * Acknowledge to the reporter that we've received the report and that a fix
-      is forthcoming. We'll give a rough timeline and ask the reporter to keep
-      the issue confidential until we announce it.
+    * Acknowledge to the reporter that we've received the report and that a
+      fix is forthcoming. We'll give a rough timeline and ask the reporter
+      to keep the issue confidential until we announce it.
 
-    * Halt all other development as long as is needed to develop a fix, including
-      patches against the current and two previous releases.
+    * Halt all other development as long as is needed to develop a fix,
+      including patches against the current and two previous releases.
 
     * Determine a go-public date for announcing the vulnerability and the fix.
-      To try to mitigate a possible "arms race" between those applying the patch
-      and those trying to exploit the hole, we will not announce security
-      problems immediately.
+      To try to mitigate a possible "arms race" between those applying the
+      patch and those trying to exploit the hole, we will not announce
+      security problems immediately.
 
     * Pre-notify everyone we know to be running the affected version(s) of
-      Django. We will send these notifications through private e-mail which will
-      include documentation of the vulnerability, links to the relevant patch(es),
-      and a request to keep the vulnerability confidential until the official
-      go-public date.
+      Django. We will send these notifications through private e-mail
+      which will include documentation of the vulnerability, links to the
+      relevant patch(es), and a request to keep the vulnerability
+      confidential until the official go-public date.
 
     * Publicly announce the vulnerability and the fix on the pre-determined
       go-public date. This will probably mean a new release of Django, but
@@ -115,8 +125,9 @@ following actions:
 Submitting patches
 ==================
 
-We're always grateful for patches to Django's code. Indeed, bug reports with
-associated patches will get fixed *far* more quickly than those without patches.
+We're always grateful for patches to Django's code. Indeed, bug reports
+with associated patches will get fixed *far* more quickly than those
+without patches.
 
 "Claiming" tickets
 ------------------
@@ -132,16 +143,20 @@ fixing it (as measured by your coding ability, knowledge of Django internals
 and time availability), claim it by following these steps:
 
     * `Create an account`_ to use in our ticket system.
+
     * If a ticket for this issue doesn't exist yet, create one in our
       `ticket tracker`_.
+
     * If a ticket for this issue already exists, make sure nobody else has
       claimed it. To do this, look at the "Assigned to" section of the ticket.
       If it's assigned to "nobody," then it's available to be claimed.
       Otherwise, somebody else is working on this ticket, and you either find
       another bug/feature to work on, or contact the developer working on the
       ticket to offer your help.
+
     * Log into your account, if you haven't already, by clicking "Login" in the
       upper right of the ticket page.
+
     * Claim the ticket by clicking the radio button next to "Accept ticket"
       near the bottom of the page, then clicking "Submit changes."
 
@@ -158,11 +173,9 @@ Once you've claimed a ticket, you have a responsibility to work on that ticket
 in a reasonably timely fashion. If you don't have time to work on it, either
 unclaim it or don't claim it in the first place!
 
-Ticket triagers go through the list of claimed tickets from time to
-time, checking whether any progress has been made. If there's no sign of
-progress on a particular claimed ticket for a week or two, a triager may ask
-you to relinquish the ticket claim so that it's no longer monopolized and
-somebody else can claim it.
+If there's no sign of progress on a particular claimed ticket for a week or
+two, another developer may ask you to relinquish the ticket claim so that it's
+no longer monopolized and somebody else can claim it.
 
 If you've claimed a ticket and it's taking a long time (days or weeks) to code,
 keep everybody updated by posting comments on the ticket. If you don't provide
@@ -185,20 +198,21 @@ Patch style
     * Make sure your code matches our `coding style`_.
 
     * Submit patches in the format returned by the ``svn diff`` command.
-      An exception is for code changes that are described more clearly in plain
-      English than in code. Indentation is the most common example; it's hard to
-      read patches when the only difference in code is that it's indented.
+      An exception is for code changes that are described more clearly in
+      plain English than in code. Indentation is the most common example; it's
+      hard to read patches when the only difference in code is that it's
+      indented.
 
       Patches in ``git diff`` format are also acceptable.
 
     * When creating patches, always run ``svn diff`` from the top-level
       ``trunk`` directory -- i.e., the one that contains ``django``, ``docs``,
-      ``tests``, ``AUTHORS``, etc. This makes it easy for other people to apply
-      your patches.
+      ``tests``, ``AUTHORS``, etc. This makes it easy for other people to
+      apply your patches.
 
-    * Attach patches to a ticket in the `ticket tracker`_, using the "attach file"
-      button. Please *don't* put the patch in the ticket description or comment
-      unless it's a single line patch.
+    * Attach patches to a ticket in the `ticket tracker`_, using the "attach
+      file" button. Please *don't* put the patch in the ticket description
+      or comment unless it's a single line patch.
 
     * Name the patch file with a ``.diff`` extension; this will let the ticket
       tracker apply correct syntax highlighting, which is quite helpful.
@@ -209,11 +223,12 @@ Patch style
 
     * The code required to fix a problem or add a feature is an essential part
       of a patch, but it is not the only part. A good patch should also include
-      a regression test to validate the behavior that has been fixed (and prevent
-      the problem from arising again).
+      a regression test to validate the behavior that has been fixed
+      (and prevent the problem from arising again).
 
-    * If the code associated with a patch adds a new feature, or modifies behavior
-      of an existing feature, the patch should also contain documentation.
+    * If the code associated with a patch adds a new feature, or modifies
+      behavior of an existing feature, the patch should also contain
+      documentation.
 
 Non-trivial patches
 -------------------
@@ -233,8 +248,8 @@ the `required details`_. A number of tickets have patches, but those patches
 don't meet all the requirements of a `good patch`_.
 
 One way to help out is to *triage* bugs that have been reported by other
-users. A couple of dedicated volunteers work on this regularly, but more help
-is always appreciated.
+users. The core team--as well as many community members--work on this
+regularly, but more help is always appreciated.
 
 Most of the workflow is based around the concept of a ticket's "triage stage".
 This stage describes where in its lifetime a given ticket is at any time.
@@ -248,22 +263,28 @@ Since a picture is worth a thousand words, let's start there:
    :width: 590
    :alt: Django's ticket workflow
 
-We've got two official roles here:
+We've got two roles in this diagram:
 
-    * Core developers: people with commit access who make the big decisions
-      and write the bulk of the code.
+    * Core developers: people with commit access who are responsible for
+      making the big decisions, writing large portions of the code and
+      integrating the contributions of the community.
 
-    * Ticket triagers: trusted community members with a proven history of
-      working with the Django community. As a result of this history, they
-      have been entrusted by the core developers to make some of the smaller
-      decisions about tickets.
+    * Ticket triagers: anyone in the Django community who chooses to
+      become involved in Django's development process. Our Trac installation
+      is :ref:`intentionally left open to the public
+      <the-spirit-of-contributing>`, and anyone can triage tickets.
+      Django is a community project, and we encourage `triage by the
+      community`_.
+
+Triage stages
+-------------
 
 Second, note the five triage stages:
 
-    1. A ticket starts as "Unreviewed", meaning that nobody has examined
+    1. A ticket starts as **Unreviewed**, meaning that nobody has examined
        the ticket.
 
-    2. "Design decision needed" means "this concept requires a design
+    2. **Design decision needed** means "this concept requires a design
        decision," which should be discussed either in the ticket comments or on
        `django-developers`_. The "Design decision needed" step will generally
        only be used for feature requests. It can also be used for issues
@@ -272,29 +293,29 @@ Second, note the five triage stages:
        standard) skip this step and move straight to "Accepted".
 
     3. Once a ticket is ruled to be approved for fixing, it's moved into the
-       "Accepted" stage. This stage is where all the real work gets done.
+       **Accepted** stage. This stage is where all the real work gets done.
 
-    4. In some cases, a ticket might get moved to the "Someday/Maybe" state.
+    4. In some cases, a ticket might get moved to the **Someday/Maybe** state.
        This means the ticket is an enhancement request that we might consider
        adding to the framework if an excellent patch is submitted. These
        tickets are not a high priority.
 
-    5. If a ticket has an associated patch (see below), a triager will review
-       the patch. If the patch is complete, it'll be marked as "ready for
-       checkin" so that a core developer knows to review and check in the
-       patches.
+    5. If a ticket has an associated patch (see below), it will be reviewed
+       by the community. If the patch is complete, it'll be marked as **Ready
+       for checkin** so that a core developer knows to review and commit the
+       patch.
 
 The second part of this workflow involves a set of flags the describe what the
 ticket has or needs in order to be "ready for checkin":
 
     "Has patch"
         This means the ticket has an associated patch_. These will be
-        reviewed by the triage team to see if the patch is "good".
+        reviewed to see if the patch is "good".
 
     "Needs documentation"
         This flag is used for tickets with patches that need associated
         documentation. Complete documentation of features is a prerequisite
-        before we can check a fix into the codebase.
+        before we can check them into the codebase.
 
     "Needs tests"
         This flags the patch as needing associated unit tests. Again, this is a
@@ -303,12 +324,24 @@ ticket has or needs in order to be "ready for checkin":
     "Patch needs improvement"
         This flag means that although the ticket *has* a patch, it's not quite
         ready for checkin. This could mean the patch no longer applies
-        cleanly, or that the code doesn't live up to our standards.
+        cleanly, there is a flaw in the implementation, or that the code
+        doesn't meet our standards.
+
+.. seealso::
+
+    The :ref:`contributing howto guide <triage-stages-explained>` has a detailed
+    explanation of each of the triage stages and how the triage process works in
+    Trac.
+
+.. _ticket-resolutions:
+
+Ticket Resolutions
+------------------
 
 A ticket can be resolved in a number of ways:
 
     "fixed"
-        Used by one of the core developers once a patch has been rolled into
+        Used by the core developers once a patch has been rolled into
         Django and the issue is fixed.
 
     "invalid"
@@ -321,8 +354,10 @@ A ticket can be resolved in a number of ways:
     "wontfix"
         Used when a core developer decides that this request is not
         appropriate for consideration in Django. This is usually chosen after
-        discussion in the ``django-developers`` mailing list, and you should
-        feel free to join in when it's something you care about.
+        discussion in the ``django-developers`` mailing list. Feel free to
+        start or join in discussions of "wontfix" tickets on the mailing list,
+        but please do not reopen tickets closed as "wontfix" by core
+        developers.
 
     "duplicate"
         Used when another ticket covers the same issue. By closing duplicate
@@ -332,29 +367,41 @@ A ticket can be resolved in a number of ways:
         Used when the ticket doesn't contain enough detail to replicate
         the original bug.
 
+    "needsinfo"
+        Used when the ticket does not contain enough information to replicate
+        the reported issue but is potentially still valid. The ticket
+        should be reopened when more information is supplied.
+
 If you believe that the ticket was closed in error -- because you're
 still having the issue, or it's popped up somewhere else, or the triagers have
--- made a mistake, please reopen the ticket and tell us why. Please do not
-reopen tickets that have been marked as "wontfix" by core developers.
+made a mistake -- please reopen the ticket and provide further information.
+Please do not reopen tickets that have been marked as "wontfix" by core
+developers.
+
+.. seealso::
+
+    For more information on what to do when closing a ticket, please see the
+    :ref:`contributing howto guide <closing-tickets>`.
 
 .. _required details: `Reporting bugs`_
 .. _good patch: `Patch style`_
+.. _triage by the community: `Triage by the general community`_
 .. _patch: `Submitting patches`_
 
 Triage by the general community
 -------------------------------
 
-Although the core developers and ticket triagers make the big decisions in
-the ticket triage process, there's also a lot that general community
-members can do to help the triage process. In particular, you can help out by:
+Although the core developers make the big decisions in the ticket triage
+process, there's a lot that general community members can do to help the
+triage process. In particular, you can help out by:
 
     * Closing "Unreviewed" tickets as "invalid", "worksforme" or "duplicate."
 
     * Promoting "Unreviewed" tickets to "Design decision needed" if a design
       decision needs to be made, or "Accepted" in case of obvious bugs.
 
-    * Correcting the "Needs tests", "Needs documentation", or "Has patch" flags
-      for tickets where they are incorrectly set.
+    * Correcting the "Needs tests", "Needs documentation", or "Has patch"
+      flags for tickets where they are incorrectly set.
 
     * Adding the `easy-pickings`_ keyword to tickets that are small and
       relatively straightforward.
@@ -363,15 +410,15 @@ members can do to help the triage process. In particular, you can help out by:
       any activity in a long time, it's possible that the problem has been
       fixed but the ticket hasn't yet been closed.
 
-    * Contacting the owners of tickets that have been claimed but have not seen
-      any recent activity. If the owner doesn't respond after a week or so,
-      remove the owner's claim on the ticket.
+    * Contacting the owners of tickets that have been claimed but have not
+      seen any recent activity. If the owner doesn't respond after a week
+      or so, remove the owner's claim on the ticket.
 
-    * Identifying trends and themes in the tickets. If there a lot of bug reports
-      about a particular part of Django, it may indicate we should consider
-      refactoring that part of the code. If a trend is emerging, you should
-      raise it for discussion (referencing the relevant tickets) on
-      `django-developers`_.
+    * Identifying trends and themes in the tickets. If there a lot of bug
+      reports about a particular part of Django, it may indicate we should
+      consider refactoring that part of the code. If a trend is emerging,
+      you should raise it for discussion (referencing the relevant tickets)
+      on `django-developers`_.
 
 However, we do ask the following of all general community members working in
 the ticket database:
@@ -380,17 +427,19 @@ the ticket database:
       make the final determination of the fate of a ticket, usually after
       consultation with the community.
 
-    * Please **don't** promote tickets to "Ready for checkin" unless they are
-      *trivial* changes -- for example, spelling mistakes or broken links in
-      documentation.
+    * Please **don't** promote your own tickets to "Ready for checkin". You
+      may mark other people's tickets which you've reviewed as "Ready for
+      checkin", but you should get at minimum one other community member to
+      review a patch that you submit.
 
     * Please **don't** reverse a decision that has been made by a core
-      developer. If you disagree with a discussion that has been made,
+      developer. If you disagree with a decision that has been made,
       please post a message to `django-developers`_.
 
-    * Please be conservative in your actions. If you're unsure if you should
-      be making a change, don't make the change -- leave a comment with your
-      concerns on the ticket, or post a message to `django-developers`_.
+    * If you're unsure if you should be making a change, don't make the change
+      but instead leave a comment with your concerns on the ticket, or
+      post a message to `django-developers`_. It's okay to be unsure, but
+      your input is still valuable.
 
 .. _contributing-translations:
 
@@ -404,8 +453,10 @@ infrastructure available to Django applications described in the
 :doc:`i18n documentation</topics/i18n/index>`.
 
 These translations are contributed by Django users worldwide. If you find an
-incorrect translation, or if you'd like to add a language that isn't yet
-translated, here's what to do:
+incorrect translation or want to discuss specific translations, go to the
+`translation team`_ page for that language. If you would like to help out
+with translating or add a language that isn't yet translated, here's what
+to do:
 
     * Join the `Django i18n mailing list`_ and introduce yourself.
 
@@ -427,7 +478,7 @@ translated, here's what to do:
     * Once you are a member of a team choose the translation resource you
       want update on the team page. For example the "core" resource refers
       to the translation catalogue that contains all non-app translations.
-      Each of the contrib apps also have a resource -- prefixed with "contrib-".
+      Each of the contrib apps also have a resource (prefixed with "contrib-").
 
       .. note::
          For more information about how to use Transifex, see the
@@ -449,6 +500,7 @@ translated, here's what to do:
 .. _Transifex: http://www.transifex.net/
 .. _Django project page: http://www.transifex.net/projects/p/django/
 .. _translation teams: http://www.transifex.net/projects/p/django/teams/
+.. _translation team: http://www.transifex.net/projects/p/django/teams/
 .. _Transifex Help: http://help.transifex.net/
 
 Submitting javascript patches
@@ -497,9 +549,9 @@ Various Django-specific code issues are detailed in this section.
 Use of ``django.conf.settings``
 -------------------------------
 
-Modules should not in general use settings stored in ``django.conf.settings`` at
-the top level (i.e. evaluated when the module is imported). The explanation for
-this is as follows:
+Modules should not in general use settings stored in ``django.conf.settings``
+at the top level (i.e. evaluated when the module is imported). The explanation
+for this is as follows:
 
 Manual configuration of settings (i.e. not relying on the
 ``DJANGO_SETTINGS_MODULE`` environment variable) is allowed and possible as
@@ -509,10 +561,10 @@ follows::
 
     settings.configure({}, SOME_SETTING='foo')
 
-However, if any setting is accessed before the ``settings.configure`` line, this
-will not work. (Internally, ``settings`` is a ``LazyObject`` which configures
-itself automatically when the settings are accessed if it has not already been
-configured).
+However, if any setting is accessed before the ``settings.configure`` line,
+this will not work. (Internally, ``settings`` is a ``LazyObject`` which
+configures itself automatically when the settings are accessed if it has not
+already been configured).
 
 So, if there is a module containing some code as follows::
 
@@ -526,9 +578,9 @@ That means that the ability for third parties to import the module at the top
 level is incompatible with the ability to configure the settings object
 manually, or makes it very difficult in some circumstances.
 
-Instead of the above code, a level of laziness or indirection must be used, such
-as :class:`django.utils.functional.LazyObject`, :func:`django.utils.functional.lazy` or
-``lambda``.
+Instead of the above code, a level of laziness or indirection must be used,
+such as `django.utils.functional.LazyObject``, ``django.utils.functional.lazy``
+or ``lambda``.
 
 Coding style
 ============
@@ -958,19 +1010,22 @@ dictionary for the applicable database.
 Running only some of the tests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Django's entire test suite takes a few minutes to run. To run a subset of the
-unit tests, append the names of the test modules to the ``runtests.py``
+Django's entire test suite takes a while to run, and running every single test
+could be redundant if, say, you just added a test to Django that you want to
+run quickly without running everything else. You can run a subset of the unit
+tests by appending the names of the test modules to ``runtests.py`` on the
 command line.
 
-As an example, if you'd like to only run tests for generic relations and
+For example, if you'd like to run tests only for generic relations and
 internationalization, type:
 
 .. code-block:: bash
 
     ./runtests.py --settings=path.to.settings generic_relations i18n
 
-See the list of directories in ``tests/modeltests`` and
-``tests/regressiontests`` for module names.
+How do you find out the names of individual tests? Look in ``tests/modeltests``
+and ``tests/regressiontests`` -- each directory name there is the name of a
+test.
 
 If you just want to run a particular class of tests, you can specify a list of
 paths to individual test classes. For example, to run the ``TranslationTests``
@@ -980,7 +1035,7 @@ of the ``i18n`` module, type:
 
     ./runtests.py --settings=path.to.settings i18n.TranslationTests
 
-You can specify an individual test like this:
+Going beyond that, you can specify an individual test method like this:
 
 .. code-block:: bash
 
@@ -1000,7 +1055,7 @@ dependencies:
     *  memcached_, plus a :ref:`supported Python binding <memcached>`
     *  gettext_ (:ref:`gettext_on_windows`)
 
-If you want to test the memcached cache backend, you will also need to define
+If you want to test the memcached cache backend, you'll also need to define
 a :setting:`CACHES` setting that points at your memcached instance.
 
 Each of these dependencies is optional. If you're missing any of them, the
@@ -1034,10 +1089,10 @@ Requesting features
 ===================
 
 We're always trying to make Django better, and your feature requests are a key
-part of that. Here are some tips on how to most effectively make a request:
+part of that. Here are some tips on how to make a request most effectively:
 
-    * Request the feature on `django-developers`_, not in the ticket tracker;
-      it'll get read more closely if it's on the mailing list.
+    * Request the feature on `django-developers`_, not in the ticket tracker.
+      It'll get read more closely if it's on the mailing list.
 
     * Describe clearly and concisely what the missing feature is and how you'd
       like to see it implemented. Include example code (non-functional is OK)
@@ -1050,8 +1105,8 @@ part of that. Here are some tips on how to most effectively make a request:
 
 As with most open-source projects, code talks. If you are willing to write the
 code for the feature yourself or if (even better) you've already written it,
-it's much more likely to be accepted.  If it's a large feature that might need
-multiple developers we're always happy to give you an experimental branch in
+it's much more likely to be accepted. If it's a large feature that might need
+multiple developers, we're always happy to give you an experimental branch in
 our repository; see below.
 
 Branch policy
@@ -1082,14 +1137,15 @@ for feature branches:
        trunk you'll need to find a core developer familiar with your DVCS of
        choice who'll actually perform the merge.
 
-       If you do decided to start a distributed branch of Django and choose to make it
-       public, please add the branch to the `Django branches`_ wiki page.
+       If you do decided to start a distributed branch of Django and choose to
+       make it public, please add the branch to the `Django branches`_ wiki
+       page.
 
-    2. Feature branches using SVN have a higher bar. If you want a branch in SVN
-       itself, you'll need a "mentor" among the :doc:`core committers
-       </internals/committers>`. This person is responsible for actually creating
-       the branch, monitoring your process (see below), and ultimately merging
-       the branch into trunk.
+    2. Feature branches using SVN have a higher bar. If you want a branch
+       in SVN itself, you'll need a "mentor" among the :doc:`core committers
+       </internals/committers>`. This person is responsible for actually
+       creating the branch, monitoring your process (see below), and
+       ultimately merging the branch into trunk.
 
        If you want a feature branch in SVN, you'll need to ask in
        `django-developers`_ for a mentor.
@@ -1107,8 +1163,8 @@ successful Django branch.
 
 DVCS branches are obviously not under central control, so we have no way of
 enforcing these rules. However, if you're using a DVCS, following these rules
-will give you the best chance of having a successful branch (read: merged back to
-trunk).
+will give you the best chance of having a successful branch (read: merged back
+to trunk).
 
 Developers with branches in SVN, however, **must** follow these rules. The
 branch mentor will keep on eye on the branch and **will delete it** if these
@@ -1137,8 +1193,8 @@ Once the branch is stable and ready to be merged into the trunk, alert
 
 After a branch has been merged, it should be considered "dead"; write access to
 it will be disabled, and old branches will be periodically "trimmed." To keep
-our SVN wrangling to a minimum, we won't be merging from a given branch into the
-trunk more than once.
+our SVN wrangling to a minimum, we won't be merging from a given branch into
+the trunk more than once.
 
 Using branches
 --------------
@@ -1236,7 +1292,7 @@ How we make decisions
 Whenever possible, we strive for a rough consensus. To that end, we'll often
 have informal votes on `django-developers`_ about a feature. In these votes we
 follow the voting style invented by Apache and used on Python itself, where
-votes are given as +1, +0, -0, or -1.  Roughly translated, these votes mean:
+votes are given as +1, +0, -0, or -1. Roughly translated, these votes mean:
 
     * +1: "I love the idea and I'm strongly committed to it."
 
@@ -1256,8 +1312,8 @@ if the discussion towards a consensus fizzles out without a concrete decision,
 we use a more formal process.
 
 Any core committer (see below) may call for a formal vote using the same
-voting mechanism above. A proposition will be considered carried by the core team
-if:
+voting mechanism above. A proposition will be considered carried by the core
+team if:
 
     * There are three "+1" votes from members of the core team.
 
@@ -1304,8 +1360,9 @@ Partial committers
 Decisions on new committers will follow the process explained above in `how
 we make decisions`_.
 
-To request commit access, please contact an existing committer privately. Public
-requests for commit access are potential flame-war starters, and will be ignored.
+To request commit access, please contact an existing committer privately.
+Public requests for commit access are potential flame-war starters, and
+will be ignored.
 
 .. _community page: http://www.djangoproject.com/community/
 .. _ticket tracker: http://code.djangoproject.com/newticket

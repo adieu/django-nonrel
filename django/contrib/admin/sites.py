@@ -1,8 +1,9 @@
 import re
 from django import http, template
 from django.contrib.admin import ModelAdmin, actions
-from django.contrib.admin.forms import AdminAuthenticationForm, ERROR_MESSAGE
-from django.contrib.auth import REDIRECT_FIELD_NAME, authenticate, login
+from django.contrib.admin.forms import AdminAuthenticationForm
+from django.contrib.auth import REDIRECT_FIELD_NAME
+from django.contrib.contenttypes import views as contenttype_views
 from django.views.decorators.csrf import csrf_protect
 from django.db.models.base import ModelBase
 from django.core.exceptions import ImproperlyConfigured
@@ -11,7 +12,7 @@ from django.shortcuts import render_to_response
 from django.utils.functional import update_wrapper
 from django.utils.safestring import mark_safe
 from django.utils.text import capfirst
-from django.utils.translation import ugettext_lazy, ugettext as _
+from django.utils.translation import ugettext as _
 from django.views.decorators.cache import never_cache
 from django.conf import settings
 
@@ -61,6 +62,8 @@ class AdminSite(object):
         they'll be applied as options to the admin class.
 
         If a model is already registered, this will raise AlreadyRegistered.
+
+        If a model is abstract, this will raise ImproperlyConfigured.
         """
         if not admin_class:
             admin_class = ModelAdmin
@@ -74,6 +77,10 @@ class AdminSite(object):
         if isinstance(model_or_iterable, ModelBase):
             model_or_iterable = [model_or_iterable]
         for model in model_or_iterable:
+            if model._meta.abstract:
+                raise ImproperlyConfigured('The model %s is abstract, so it '
+                      'cannot be registered with admin.' % model.__name__)
+
             if model in self._registry:
                 raise AlreadyRegistered('The model %s is already registered' % model.__name__)
 
@@ -225,7 +232,7 @@ class AdminSite(object):
                 wrap(self.i18n_javascript, cacheable=True),
                 name='jsi18n'),
             url(r'^r/(?P<content_type_id>\d+)/(?P<object_id>.+)/$',
-                'django.views.defaults.shortcut'),
+                wrap(contenttype_views.shortcut)),
             url(r'^(?P<app_label>\w+)/$',
                 wrap(self.app_index),
                 name='app_list')

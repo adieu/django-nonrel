@@ -8,7 +8,10 @@ class Band(models.Model):
     name = models.CharField(max_length=100)
     bio = models.TextField()
     sign_date = models.DateField()
-    
+
+    class Meta:
+        ordering = ('name',)
+
     def __unicode__(self):
         return self.name
 
@@ -31,6 +34,9 @@ class ValidationTestModel(models.Model):
     is_active = models.BooleanField()
     pub_date = models.DateTimeField()
     band = models.ForeignKey(Band)
+
+    def decade_published_in(self):
+        return self.pub_date.strftime('%Y')[:3] + "0's"
 
 class ValidationTestInlineModel(models.Model):
     parent = models.ForeignKey(ValidationTestModel)

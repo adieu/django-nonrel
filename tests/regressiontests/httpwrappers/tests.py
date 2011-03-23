@@ -1,7 +1,8 @@
 import copy
 import pickle
 
-from django.http import QueryDict, HttpResponse, SimpleCookie, BadHeaderError
+from django.http import (QueryDict, HttpResponse, SimpleCookie, BadHeaderError,
+        parse_cookie)
 from django.utils import unittest
 
 class QueryDictTests(unittest.TestCase):
@@ -252,8 +253,8 @@ class CookieTests(unittest.TestCase):
         # That's not the bug this test is looking for, so ignore it.
         c = SimpleCookie()
         c['test'] = "An,awkward;value"
-        self.assert_(";" not in c.output().rstrip(';')) # IE compat
-        self.assert_("," not in c.output().rstrip(';')) # Safari compat
+        self.assertTrue(";" not in c.output().rstrip(';')) # IE compat
+        self.assertTrue("," not in c.output().rstrip(';')) # Safari compat
 
     def test_decode(self):
         """
@@ -274,3 +275,9 @@ class CookieTests(unittest.TestCase):
         c2 = SimpleCookie()
         c2.load(c.output())
         self.assertEqual(c['test'].value, c2['test'].value)
+
+    def test_nonstandard_keys(self):
+        """
+        Test that a single non-standard cookie name doesn't affect all cookies. Ticket #13007.
+        """
+        self.assertTrue('good_cookie' in parse_cookie('good_cookie=yes;bad:cookie=yes').keys())

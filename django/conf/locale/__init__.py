@@ -5,6 +5,12 @@ LANG_INFO = {
         'name': 'Arabic',
         'name_local': u'\u0627\u0644\u0639\u0631\u0628\u064a\u0651\u0629',
     },
+    'az': {
+        'bidi': True,
+        'code': 'az',
+        'name': 'Azerbaijani',
+        'name_local': u'az\u0259rbaycan dili',
+    },
     'bg': {
         'bidi': False,
         'code': 'bg',
@@ -82,6 +88,18 @@ LANG_INFO = {
         'code': 'es-ar',
         'name': 'Argentinian Spanish',
         'name_local': u'espa\xf1ol de Argentina',
+    },
+    'es-mx': {
+        'bidi': False,
+        'code': 'es-mx',
+        'name': 'Mexican Spanish',
+        'name_local': u'espa\xf1ol de Mexico',
+    },
+    'es-ni': {
+        'bidi': False,
+        'code': 'es-ni',
+        'name': 'Nicaraguan Spanish',
+        'name_local': u'espa\xf1ol de Nicaragua',
     },
     'et': {
         'bidi': False,
@@ -358,6 +376,12 @@ LANG_INFO = {
         'code': 'uk',
         'name': 'Ukrainian',
         'name_local': u'\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430',
+    },
+    'ur': {
+        'bidi': False,
+        'code': 'ur',
+        'name': 'Urdu',
+        'name_local': u'\u0627\u0631\u062f\u0648',
     },
     'vi': {
         'bidi': False,

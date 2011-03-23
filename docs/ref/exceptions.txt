@@ -25,7 +25,7 @@ ObjectDoesNotExist and DoesNotExist
     exception that is provided on every model class as a way of
     identifying the specific type of object that could not be found.
 
-    See :meth:`~django.db.models.QuerySet.get()` for further information
+    See :meth:`~django.db.models.query.QuerySet.get()` for further information
     on :exc:`ObjectDoesNotExist` and :exc:`DoesNotExist`.
 
 MultipleObjectsReturned
@@ -38,7 +38,7 @@ MultipleObjectsReturned
     class contains a subclassed version that can be used to identify the
     specific object type that has returned multiple objects.
 
-    See :meth:`~django.db.models.QuerySet.get()` for further information.
+    See :meth:`~django.db.models.query.QuerySet.get()` for further information.
 
 SuspiciousOperation
 -------------------
@@ -104,6 +104,18 @@ ValidationError
     :ref:`Model Field Validation <validating-objects>` and the
     :doc:`Validator Reference </ref/validators>`.
 
+.. currentmodule:: django.core.urlresolvers
+
+NoReverseMatch
+--------------
+.. exception:: NoReverseMatch
+
+    The :exc:`NoReverseMatch` exception is raised by
+    :mod:`django.core.urlresolvers` when a matching URL in your URLconf
+    cannot be identified based on the parameters supplied.
+
+.. currentmodule:: django.db
+
 Database Exceptions
 ===================
 
@@ -112,11 +124,25 @@ Django wraps the standard database exceptions :exc:`DatabaseError` and
 implementation of these classes. These database exceptions are
 provided in :mod:`django.db`.
 
+.. exception:: DatabaseError
+.. exception:: IntegrityError
+
 The Django wrappers for database exceptions behave exactly the same as
 the underlying database exceptions. See `PEP 249 - Python Database API
 Specification v2.0`_ for further information.
 
 .. _`PEP 249 - Python Database API Specification v2.0`: http://www.python.org/dev/peps/pep-0249/
+
+.. currentmodule:: django.db.transaction
+
+Transaction Exceptions
+======================
+
+.. exception:: TransactionManagementError
+
+    The :exc:`TransactionManagementError` is raised for any and all problems
+    related to database transactions. It is available from
+    :mod:`django.db.transaction`.
 
 Python Exceptions
 =================

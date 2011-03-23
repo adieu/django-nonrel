@@ -27,8 +27,12 @@ import Cookie
 _morsel_supports_httponly = Cookie.Morsel._reserved.has_key('httponly')
 # Some versions of Python 2.7 and later won't need this encoding bug fix:
 _cookie_encodes_correctly = Cookie.SimpleCookie().value_encode(';') == (';', '"\\073"')
+# See ticket #13007, http://bugs.python.org/issue2193 and http://trac.edgewall.org/ticket/2256
+_tc = Cookie.SimpleCookie()
+_tc.load('f:oo')
+_cookie_allows_colon_in_names = 'Set-Cookie: f:oo=' in _tc.output()
 
-if _morsel_supports_httponly and _cookie_encodes_correctly:
+if _morsel_supports_httponly and _cookie_encodes_correctly and _cookie_allows_colon_in_names:
     SimpleCookie = Cookie.SimpleCookie
 else:
     if not _morsel_supports_httponly:
@@ -84,6 +88,27 @@ else:
                     encoded = '"' + encoded + '"'
 
                 return val, encoded
+
+        if not _cookie_allows_colon_in_names:
+            def load(self, rawdata, ignore_parse_errors=False):
+                if ignore_parse_errors:
+                    self.bad_cookies = []
+                    self._BaseCookie__set = self._loose_set
+                super(SimpleCookie, self).load(rawdata)
+                if ignore_parse_errors:
+                    self._BaseCookie__set = self._strict_set
+                    for key in self.bad_cookies:
+                        del self[key]
+
+            _strict_set = Cookie.BaseCookie._BaseCookie__set
+
+            def _loose_set(self, key, real_value, coded_value):
+                try:
+                    self._strict_set(key, real_value, coded_value)
+                except Cookie.CookieError:
+                    self.bad_cookies.append(key)
+                    dict.__setitem__(self, key, None)
+
 
 class CompatCookie(SimpleCookie):
     def __init__(self, *args, **kwargs):
@@ -141,7 +166,9 @@ class HttpRequest(object):
         return host
 
     def get_full_path(self):
-        return ''
+        # RFC 3986 requires query string arguments to be in the ASCII range.
+        # Rather than crash if this doesn't happen, we encode defensively.
+        return '%s%s' % (self.path, self.META.get('QUERY_STRING', '') and ('?' + iri_to_uri(self.META.get('QUERY_STRING', ''))) or '')
 
     def build_absolute_uri(self, location=None):
         """
@@ -433,7 +460,7 @@ def parse_cookie(cookie):
     if not isinstance(cookie, Cookie.BaseCookie):
         try:
             c = SimpleCookie()
-            c.load(cookie)
+            c.load(cookie, ignore_parse_errors=True)
         except Cookie.CookieError:
             # Invalid cookie
             return {}
@@ -607,14 +634,14 @@ class HttpResponseRedirect(HttpResponse):
     status_code = 302
 
     def __init__(self, redirect_to):
-        HttpResponse.__init__(self)
+        super(HttpResponseRedirect, self).__init__()
         self['Location'] = iri_to_uri(redirect_to)
 
 class HttpResponsePermanentRedirect(HttpResponse):
     status_code = 301
 
     def __init__(self, redirect_to):
-        HttpResponse.__init__(self)
+        super(HttpResponsePermanentRedirect, self).__init__()
         self['Location'] = iri_to_uri(redirect_to)
 
 class HttpResponseNotModified(HttpResponse):
@@ -633,20 +660,14 @@ class HttpResponseNotAllowed(HttpResponse):
     status_code = 405
 
     def __init__(self, permitted_methods):
-        HttpResponse.__init__(self)
+        super(HttpResponseNotAllowed, self).__init__()
         self['Allow'] = ', '.join(permitted_methods)
 
 class HttpResponseGone(HttpResponse):
     status_code = 410
 
-    def __init__(self, *args, **kwargs):
-        HttpResponse.__init__(self, *args, **kwargs)
-
 class HttpResponseServerError(HttpResponse):
     status_code = 500
-
-    def __init__(self, *args, **kwargs):
-        HttpResponse.__init__(self, *args, **kwargs)
 
 # A backwards compatible alias for HttpRequest.get_host.
 def get_host(request):

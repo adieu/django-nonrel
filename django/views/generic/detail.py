@@ -3,6 +3,7 @@ import re
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from django.http import Http404
 from django.utils.encoding import smart_str
+from django.utils.translation import ugettext as _
 from django.views.generic.base import TemplateResponseMixin, View
 
 
@@ -41,14 +42,14 @@ class SingleObjectMixin(object):
         # If none of those are defined, it's an error.
         else:
             raise AttributeError(u"Generic detail view %s must be called with "
-                                 u"either an object id or a slug."
+                                 u"either an object pk or a slug."
                                  % self.__class__.__name__)
 
         try:
             obj = queryset.get()
         except ObjectDoesNotExist:
-            raise Http404(u"No %s found matching the query" %
-                          (queryset.model._meta.verbose_name))
+            raise Http404(_(u"No %(verbose_name)s found matching the query") %
+                          {'verbose_name': queryset.model._meta.verbose_name})
         return obj
 
     def get_queryset(self):
@@ -80,8 +81,7 @@ class SingleObjectMixin(object):
         if self.context_object_name:
             return self.context_object_name
         elif hasattr(obj, '_meta'):
-            return smart_str(re.sub('[^a-zA-Z0-9]+', '_',
-                    obj._meta.verbose_name.lower()))
+            return smart_str(obj._meta.object_name.lower())
         else:
             return None
 
@@ -109,7 +109,12 @@ class SingleObjectTemplateResponseMixin(TemplateResponseMixin):
         Return a list of template names to be used for the request. Must return
         a list. May not be called if get_template is overridden.
         """
-        names = super(SingleObjectTemplateResponseMixin, self).get_template_names()
+        try:
+            names = super(SingleObjectTemplateResponseMixin, self).get_template_names()
+        except ImproperlyConfigured:
+            # If template_name isn't specified, it's not a problem --
+            # we just start with an empty list.
+            names = []
 
         # If self.template_name_field is set, grab the value of the field
         # of that name from the object; this is the most specific template

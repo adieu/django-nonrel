@@ -1,7 +1,10 @@
+import base64
+import calendar
+import datetime
 import re
 import sys
 import urllib
-import base64
+import urlparse
 from binascii import Error as BinasciiError
 from email.Utils import formatdate
 
@@ -9,6 +12,17 @@ from django.utils.encoding import smart_str, force_unicode
 from django.utils.functional import allow_lazy
 
 ETAG_MATCH = re.compile(r'(?:W/)?"((?:\\.|[^"])*)"')
+
+MONTHS = 'jan feb mar apr may jun jul aug sep oct nov dec'.split()
+__D = r'(?P<day>\d{2})'
+__D2 = r'(?P<day>[ \d]\d)'
+__M = r'(?P<mon>\w{3})'
+__Y = r'(?P<year>\d{4})'
+__Y2 = r'(?P<year>\d{2})'
+__T = r'(?P<hour>\d{2}):(?P<min>\d{2}):(?P<sec>\d{2})'
+RFC1123_DATE = re.compile(r'^\w{3}, %s %s %s %s GMT$' % (__D, __M, __Y, __T))
+RFC850_DATE = re.compile(r'^\w{6,9}, %s-%s-%s %s GMT$' % (__D, __M, __Y2, __T))
+ASCTIME_DATE = re.compile(r'^\w{3} %s %s %s %s$' % (__M, __D2, __T, __Y))
 
 def urlquote(url, safe='/'):
     """
@@ -71,6 +85,51 @@ def http_date(epoch_seconds=None):
     """
     rfcdate = formatdate(epoch_seconds)
     return '%s GMT' % rfcdate[:25]
+
+def parse_http_date(date):
+    """
+    Parses a date format as specified by HTTP RFC2616 section 3.3.1.
+
+    The three formats allowed by the RFC are accepted, even if only the first
+    one is still in widespread use.
+
+    Returns an floating point number expressed in seconds since the epoch, in
+    UTC.
+    """
+    # emails.Util.parsedate does the job for RFC1123 dates; unfortunately
+    # RFC2616 makes it mandatory to support RFC850 dates too. So we roll
+    # our own RFC-compliant parsing.
+    for regex in RFC1123_DATE, RFC850_DATE, ASCTIME_DATE:
+        m = regex.match(date)
+        if m is not None:
+            break
+    else:
+        raise ValueError("%r is not in a valid HTTP date format" % date)
+    try:
+        year = int(m.group('year'))
+        if year < 100:
+            if year < 70:
+                year += 2000
+            else:
+                year += 1900
+        month = MONTHS.index(m.group('mon').lower()) + 1
+        day = int(m.group('day'))
+        hour = int(m.group('hour'))
+        min = int(m.group('min'))
+        sec = int(m.group('sec'))
+        result = datetime.datetime(year, month, day, hour, min, sec)
+        return calendar.timegm(result.utctimetuple())
+    except Exception:
+        raise ValueError("%r is not a valid date" % date)
+
+def parse_http_date_safe(date):
+    """
+    Same as parse_http_date, but returns None if the input is invalid.
+    """
+    try:
+        return parse_http_date(date)
+    except Exception:
+        pass
 
 # Base 36 functions: useful for generating compact URLs
 
@@ -140,3 +199,20 @@ def quote_etag(etag):
     """
     return '"%s"' % etag.replace('\\', '\\\\').replace('"', '\\"')
 
+if sys.version_info >= (2, 6):
+    def same_origin(url1, url2):
+        """
+        Checks if two URLs are 'same-origin'
+        """
+        p1, p2 = urlparse.urlparse(url1), urlparse.urlparse(url2)
+        return (p1.scheme, p1.hostname, p1.port) == (p2.scheme, p2.hostname, p2.port)
+else:
+    # Python 2.4, 2.5 compatibility. This actually works for Python 2.6 and
+    # above, but the above definition is much more obviously correct and so is
+    # preferred going forward.
+    def same_origin(url1, url2):
+        """
+        Checks if two URLs are 'same-origin'
+        """
+        p1, p2 = urlparse.urlparse(url1), urlparse.urlparse(url2)
+        return p1[0:2] == p2[0:2]

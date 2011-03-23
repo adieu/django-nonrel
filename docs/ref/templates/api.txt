@@ -170,7 +170,7 @@ straight lookups. Here are some things to keep in mind:
         >>> t = Template("My name is {{ person.first_name }}.")
         >>> class PersonClass3:
         ...     def first_name(self):
-        ...         raise AssertionError, "foo"
+        ...         raise AssertionError("foo")
         >>> p = PersonClass3()
         >>> t.render(Context({"person": p}))
         Traceback (most recent call last):
@@ -423,7 +423,7 @@ If :setting:`TEMPLATE_CONTEXT_PROCESSORS` contains this processor, every
       via the :doc:`messages framework </ref/contrib/messages>`.
 
     * ``perms`` -- An instance of
-      ``django.core.context_processors.PermWrapper``, representing the
+      ``django.contrib.auth.context_processors.PermWrapper``, representing the
       permissions that the currently logged-in user has.
 
 .. versionchanged:: 1.2
@@ -434,6 +434,11 @@ If :setting:`TEMPLATE_CONTEXT_PROCESSORS` contains this processor, every
    Prior to version 1.2, the ``messages`` variable was a lazy accessor for
    ``user.get_and_delete_messages()``. It has been changed to include any
    messages added via the :doc:`messages framework </ref/contrib/messages>`.
+
+.. versionchanged:: 1.3
+    Prior to version 1.3, ``PermWrapper`` was located in
+    ``django.contrib.auth.context_processors``.
+
 
 django.core.context_processors.debug
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

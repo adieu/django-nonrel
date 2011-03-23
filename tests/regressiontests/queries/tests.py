@@ -14,7 +14,8 @@ from django.utils.datastructures import SortedDict
 from models import (Annotation, Article, Author, Celebrity, Child, Cover, Detail,
     DumbCategory, ExtraInfo, Fan, Item, LeafA, LoopX, LoopZ, ManagedModel,
     Member, NamedCategory, Note, Number, Plaything, PointerA, Ranking, Related,
-    Report, ReservedName, Tag, TvChef, Valid, X, Food, Eaten, Node)
+    Report, ReservedName, Tag, TvChef, Valid, X, Food, Eaten, Node, ObjectA, ObjectB,
+    ObjectC)
 
 
 class BaseQuerysetTest(TestCase):
@@ -32,7 +33,7 @@ class BaseQuerysetTest(TestCase):
                 excName = exc.__name__
             else:
                 excName = str(exc)
-            raise AssertionError, "%s not raised" % excName
+            raise AssertionError("%s not raised" % excName)
 
 
 class Queries1Tests(BaseQuerysetTest):
@@ -1401,13 +1402,13 @@ class SubqueryTests(TestCase):
         "Subselects honor any manual ordering"
         try:
             query = DumbCategory.objects.filter(id__in=DumbCategory.objects.order_by('-id')[0:2])
-            self.assertEquals(set(query.values_list('id', flat=True)), set([2,3]))
+            self.assertEqual(set(query.values_list('id', flat=True)), set([2,3]))
 
             query = DumbCategory.objects.filter(id__in=DumbCategory.objects.order_by('-id')[:2])
-            self.assertEquals(set(query.values_list('id', flat=True)), set([2,3]))
+            self.assertEqual(set(query.values_list('id', flat=True)), set([2,3]))
 
             query = DumbCategory.objects.filter(id__in=DumbCategory.objects.order_by('-id')[2:])
-            self.assertEquals(set(query.values_list('id', flat=True)), set([1]))
+            self.assertEqual(set(query.values_list('id', flat=True)), set([1]))
         except DatabaseError:
             # Oracle and MySQL both have problems with sliced subselects.
             # This prevents us from even evaluating this test case at all.
@@ -1418,7 +1419,7 @@ class SubqueryTests(TestCase):
         "Delete queries can safely contain sliced subqueries"
         try:
             DumbCategory.objects.filter(id__in=DumbCategory.objects.order_by('-id')[0:1]).delete()
-            self.assertEquals(set(DumbCategory.objects.values_list('id', flat=True)), set([1,2]))
+            self.assertEqual(set(DumbCategory.objects.values_list('id', flat=True)), set([1,2]))
         except DatabaseError:
             # Oracle and MySQL both have problems with sliced subselects.
             # This prevents us from even evaluating this test case at all.
@@ -1440,7 +1441,7 @@ class CloneTests(TestCase):
         # Use the note queryset in a query, and evalute
         # that query in a way that involves cloning.
         try:
-            self.assertEquals(ExtraInfo.objects.filter(note__in=n_list)[0].info, 'good')
+            self.assertEqual(ExtraInfo.objects.filter(note__in=n_list)[0].info, 'good')
         except:
             self.fail('Query should be clonable')
 
@@ -1658,3 +1659,62 @@ class ConditionalTests(BaseQuerysetTest):
             Number.objects.filter(num__in=numbers).count(),
             2500
         )
+
+class UnionTests(unittest.TestCase):
+    """
+    Tests for the union of two querysets. Bug #12252.
+    """
+    def setUp(self):
+        objectas = []
+        objectbs = []
+        objectcs = []
+        a_info = ['one', 'two', 'three']
+        for name in a_info:
+            o = ObjectA(name=name)
+            o.save()
+            objectas.append(o)
+        b_info = [('un', 1, objectas[0]), ('deux', 2, objectas[0]), ('trois', 3, objectas[2])]
+        for name, number, objecta in b_info:
+            o = ObjectB(name=name, num=number, objecta=objecta)
+            o.save()
+            objectbs.append(o)
+        c_info = [('ein', objectas[2], objectbs[2]), ('zwei', objectas[1], objectbs[1])]
+        for name, objecta, objectb in c_info:
+            o = ObjectC(name=name, objecta=objecta, objectb=objectb)
+            o.save()
+            objectcs.append(o)
+
+    def check_union(self, model, Q1, Q2):
+        filter = model.objects.filter
+        self.assertEqual(set(filter(Q1) | filter(Q2)), set(filter(Q1 | Q2)))
+        self.assertEqual(set(filter(Q2) | filter(Q1)), set(filter(Q1 | Q2)))
+
+    def test_A_AB(self):
+        Q1 = Q(name='two')
+        Q2 = Q(objectb__name='deux')
+        self.check_union(ObjectA, Q1, Q2)
+
+    def test_A_AB2(self):
+        Q1 = Q(name='two')
+        Q2 = Q(objectb__name='deux', objectb__num=2)
+        self.check_union(ObjectA, Q1, Q2)
+
+    def test_AB_ACB(self):
+        Q1 = Q(objectb__name='deux')
+        Q2 = Q(objectc__objectb__name='deux')
+        self.check_union(ObjectA, Q1, Q2)
+
+    def test_BAB_BAC(self):
+        Q1 = Q(objecta__objectb__name='deux')
+        Q2 = Q(objecta__objectc__name='ein')
+        self.check_union(ObjectB, Q1, Q2)
+
+    def test_BAB_BACB(self):
+        Q1 = Q(objecta__objectb__name='deux')
+        Q2 = Q(objecta__objectc__objectb__name='trois')
+        self.check_union(ObjectB, Q1, Q2)
+
+    def test_BA_BCA__BAB_BAC_BCA(self):
+        Q1 = Q(objecta__name='one', objectc__objecta__name='two')
+        Q2 = Q(objecta__objectc__name='ein', objectc__objecta__name='three', objecta__objectb__name='trois')
+        self.check_union(ObjectB, Q1, Q2)

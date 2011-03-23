@@ -1,3 +1,5 @@
+# -*- encoding: utf-8 -*-
+import codecs
 import os
 import posixpath
 import shutil
@@ -11,6 +13,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.test import TestCase
+from django.utils.encoding import smart_unicode
 from django.utils._os import rmtree_errorhandler
 
 
@@ -60,6 +63,16 @@ class StaticFilesTestCase(TestCase):
         # since we're planning on changing that we need to clear out the cache.
         default_storage._wrapped = None
 
+        # To make sure SVN doesn't hangs itself with the non-ASCII characters
+        # during checkout, we actually create one file dynamically.
+        self._nonascii_filepath = os.path.join(
+            TEST_ROOT, 'apps', 'test', 'static', 'test', u'fi\u015fier.txt')
+        f = codecs.open(self._nonascii_filepath, 'w', 'utf-8')
+        try:
+            f.write(u"fi\u015fier in the app dir")
+        finally:
+            f.close()
+
     def tearDown(self):
         settings.DEBUG = self.old_debug
         settings.MEDIA_ROOT = self.old_media_root
@@ -70,10 +83,12 @@ class StaticFilesTestCase(TestCase):
         settings.STATICFILES_DIRS = self.old_staticfiles_dirs
         settings.STATICFILES_FINDERS = self.old_staticfiles_finders
         settings.INSTALLED_APPS = self.old_installed_apps
+        if os.path.exists(self._nonascii_filepath):
+            os.unlink(self._nonascii_filepath)
 
     def assertFileContains(self, filepath, text):
-        self.assertTrue(text in self._get_file(filepath),
-                        "'%s' not in '%s'" % (text, filepath))
+        self.assertTrue(text in self._get_file(smart_unicode(filepath)),
+                        u"'%s' not in '%s'" % (text, filepath))
 
     def assertFileNotFound(self, filepath):
         self.assertRaises(IOError, self._get_file, filepath)
@@ -108,7 +123,7 @@ class BuildStaticTestCase(StaticFilesTestCase):
     def _get_file(self, filepath):
         assert filepath, 'filepath is empty.'
         filepath = os.path.join(settings.STATIC_ROOT, filepath)
-        f = open(filepath)
+        f = codecs.open(filepath, "r", "utf-8")
         try:
             return f.read()
         finally:
@@ -140,9 +155,21 @@ class TestDefaults(object):
 
     def test_app_files(self):
         """
-        Can find a file in an app media/ directory.
+        Can find a file in an app static/ directory.
         """
         self.assertFileContains('test/file1.txt', 'file1 in the app dir')
+
+    def test_nonascii_filenames(self):
+        """
+        Can find a file with non-ASCII character in an app static/ directory.
+        """
+        self.assertFileContains(u'test/fişier.txt', u'fişier in the app dir')
+
+    def test_camelcase_filenames(self):
+        """
+        Can find a file with capital letters.
+        """
+        self.assertFileContains(u'test/camelCase.txt', u'camelCase')
 
 
 class TestFindStatic(BuildStaticTestCase, TestDefaults):
@@ -156,7 +183,8 @@ class TestFindStatic(BuildStaticTestCase, TestDefaults):
             call_command('findstatic', filepath, all=False, verbosity='0')
             sys.stdout.seek(0)
             lines = [l.strip() for l in sys.stdout.readlines()]
-            contents = open(lines[1].strip()).read()
+            contents = codecs.open(
+                smart_unicode(lines[1].strip()), "r", "utf-8").read()
         finally:
             sys.stdout = _stdout
         return contents
@@ -173,7 +201,7 @@ class TestFindStatic(BuildStaticTestCase, TestDefaults):
             lines = [l.strip() for l in sys.stdout.readlines()]
         finally:
             sys.stdout = _stdout
-        self.assertEquals(len(lines), 3) # three because there is also the "Found <file> here" line
+        self.assertEqual(len(lines), 3) # three because there is also the "Found <file> here" line
         self.assertTrue('project' in lines[1])
         self.assertTrue('apps' in lines[2])
 
@@ -223,7 +251,7 @@ class TestNoFilesCreated(object):
         """
         Make sure no files were create in the destination directory.
         """
-        self.assertEquals(os.listdir(settings.STATIC_ROOT), [])
+        self.assertEqual(os.listdir(settings.STATIC_ROOT), [])
 
 
 class TestBuildStaticDryRun(BuildStaticTestCase, TestNoFilesCreated):
@@ -281,7 +309,7 @@ class TestServeStatic(StaticFilesTestCase):
         self.assertContains(self._response(filepath), text)
 
     def assertFileNotFound(self, filepath):
-        self.assertEquals(self._response(filepath).status_code, 404)
+        self.assertEqual(self._response(filepath).status_code, 404)
 
 
 class TestServeDisabled(TestServeStatic):
@@ -293,9 +321,8 @@ class TestServeDisabled(TestServeStatic):
         settings.DEBUG = False
 
     def test_disabled_serving(self):
-        self.assertRaisesRegexp(ImproperlyConfigured, 'The view to serve '
-            'static files can only be used if the DEBUG setting is True',
-            self._response, 'test.txt')
+        self.assertRaisesRegexp(ImproperlyConfigured, 'The staticfiles view '
+            'can only be used in debug mode ', self._response, 'test.txt')
 
 
 class TestServeStaticWithDefaultURL(TestServeStatic, TestDefaults):
@@ -329,11 +356,11 @@ class FinderTestCase(object):
     """
     def test_find_first(self):
         src, dst = self.find_first
-        self.assertEquals(self.finder.find(src), dst)
+        self.assertEqual(self.finder.find(src), dst)
 
     def test_find_all(self):
         src, dst = self.find_all
-        self.assertEquals(self.finder.find(src, all=True), dst)
+        self.assertEqual(self.finder.find(src, all=True), dst)
 
 
 class TestFileSystemFinder(StaticFilesTestCase, FinderTestCase):
