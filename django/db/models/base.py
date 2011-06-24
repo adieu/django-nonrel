@@ -584,6 +584,9 @@ class Model(object):
         # Once saved, this is no longer a to-be-added instance.
         self._state.adding = False
 
+        self._entity_exists = True
+        self._original_pk = self.pk
+
         # Signal that the save is complete
         if origin and not meta.auto_created:
             if connection.features.distinguishes_insert_from_update:
@@ -592,10 +595,6 @@ class Model(object):
                 created = not entity_exists
             signals.post_save.send(sender=origin, instance=self,
                 created=created, raw=raw, using=using)
-
-        self._entity_exists = True
-        self._original_pk = self.pk
-
 
     save_base.alters_data = True
 
